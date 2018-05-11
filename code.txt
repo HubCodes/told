@@ -1,0 +1,5 @@
+def foo(a: *int, b: *int): int {
+	var temp: int = *a;
+	*a = *b;
+	*b = temp;
+}

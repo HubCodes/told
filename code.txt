@@ -1,5 +1,21 @@
 def foo(a: *int, b: *int): int {
-	var temp: int = *a;
-	*a = *b;
-	*b = temp;
+	var x: *int = 4;
+	var y: int = 5;
+	if (x ~ y) {
+		printf("Hello");
+		print(a[3] + 4);
+		a = **a;
+	}
+
+	for (x + 4 / y ~ y | y ~ 5) {
+		for (x < j) {
+			for (x < k) {
+				break;
+			}
+		}
+		continue (x + 4 > 3);
+	}
+
+	var x: double = printf("x") + 5 / 2;
+	return 30 * 4 / 2 + 7 - x;
 }

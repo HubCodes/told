@@ -6,6 +6,7 @@
 #include <unordered_map>
 
 #include "lexer.hpp"
+#include "parser.hpp"
 
 #define D(x) static_cast<int>(x)
 
@@ -39,29 +40,10 @@ int main(int argc, char** argv) {
 		codeStr += code.get();
 	}	
 	std::istringstream is(codeStr);
-	
-	Token t = getNext(is);
-	while (t.tokenKind != TokenKind::UNKNOWN) {
-		std::cout << enumMap[D(t.tokenKind)] << '\n';
-		if (t.tokenKind == TokenKind::LITERAL)
-		{
-			switch (t.literal.literalKind)
-			{
-				case LiteralKind::STRING:
-					std::cout << t.literal.s << '\n';
-					break;
-				case LiteralKind::CHAR:
-					std::cout << t.literal.c << '\n';
-					break;
-				case LiteralKind::DOUBLE:
-					std::cout << t.literal.d << '\n';
-					break;
-				case LiteralKind::INT:
-					std::cout << t.literal.i << '\n';
-					break;
-			}
-		}
-		t = getNext(is);
+	std::vector<AST*> tree = parse(is);
+	for (auto&& ast : tree) {
+		ast->codegen();
+		std::cout << '\n';
 	}
 	return 0;
 }

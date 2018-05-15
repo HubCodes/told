@@ -145,6 +145,7 @@ static Token getNumber(std::istringstream& code) {
 	{
 		result.literal.d = d;
 	}
+	result.ident = numstr;
 	return result;
 }
 
@@ -188,8 +189,15 @@ static Token getDelimeter(std::istringstream& code) {
 		case '|':
 		case '!':
 		case '=':
+		case '<':
+		case '>':
+		case '^':
+		case '~':
 			return getOperator(c);
 	}
+	std::string ident;
+	ident += c;
+	result.ident = ident;
 	return result;
 }
 
@@ -210,6 +218,7 @@ static Token getString(std::istringstream& code) {
 	result.tokenKind = TokenKind::LITERAL;
 	result.literal.literalKind = LiteralKind::STRING;
 	result.literal.s = str;
+	result.ident = str;
 	return result;
 }
 
@@ -229,6 +238,9 @@ static Token getChar(std::istringstream& code) {
 	result.tokenKind = TokenKind::LITERAL;
 	result.literal.literalKind = LiteralKind::CHAR;
 	result.literal.c = c;
+	std::string ident;
+	ident += c;
+	result.ident = ident;
 	return result;
 }
 
@@ -263,7 +275,22 @@ static Token getOperator(int c) {
 		case '=':
 			result.opKind = OpKind::ASSIGN;
 			break;
+		case '<':
+			result.opKind = OpKind::LT;
+			break;
+		case '>':
+			result.opKind = OpKind::GT;
+			break;
+		case '~':
+			result.opKind = OpKind::EQ;
+			break;
+		case '^':
+			result.opKind = OpKind::NEQ;
+			break;
 	}
+	std::string ident;
+	ident += c;
+	result.ident = ident;
 	return result;
 }
 
@@ -317,6 +344,10 @@ static bool isDelimeter(int c) {
 		case '|':
 		case '!':
 		case '=':
+		case '<':
+		case '>':
+		case '~':
+		case '^':
 			return true;
 		default:
 			return false;

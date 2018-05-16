@@ -100,6 +100,7 @@ std::vector<AST*> parse(std::istringstream& code) {
 	return result;
 }
 
+static bool isDefinableVar = false;
 static FunctionDefAST* getFunction(std::istringstream& code) {
 	l(__FUNCTION__);
 	Token functionId = getNext(code);
@@ -131,7 +132,9 @@ static FunctionDefAST* getFunction(std::istringstream& code) {
 	maybe(code, TokenKind::COLON);
 	Type returnType = getType(code);
 	auto&& proto = new FunctionDeclAST(functionId.ident, returnType, args);
+	isDefinableVar = true;
 	auto&& block = getBlock(code);
+	isDefinableVar = false;
 	return new FunctionDefAST(proto, block);
 }
 
@@ -167,21 +170,29 @@ static BlockAST* getBlock(std::istringstream& code) {
 		if (lookahead.tokenKind == TokenKind::KEYWORD) {
 			switch (lookahead.keywordKind) {
 				case KeywordKind::VAR:
-					block.push_back(getVardef(code));
+					if (isDefinableVar)
+						block.push_back(getVardef(code));
+					else
+						expected(code, "none of var definition", "var definition");
 					break;
 				case KeywordKind::IF:
+					isDefinableVar = false;
 					block.push_back(getIf(code));
 					break;
 				case KeywordKind::FOR:
+					isDefinableVar = false;
 					block.push_back(getFor(code));
 					break;
 				case KeywordKind::BREAK:
+					isDefinableVar = false;
 					block.push_back(getBreak(code));
 					break;
 				case KeywordKind::CONTINUE:
+					isDefinableVar = false;
 					block.push_back(getContinue(code));
 					break;
 				case KeywordKind::RETURN:
+					isDefinableVar = false;
 					block.push_back(getReturn(code));
 					break;
 				default:
@@ -217,7 +228,6 @@ static IfAST* getIf(std::istringstream& code) {
 		// 1. else if일 경우
 		if (isIf.tokenKind == TokenKind::KEYWORD &
 			isIf.keywordKind == KeywordKind::IF) {
-			unget(code);
 			std::vector<AST*> elifblock;
 			elifblock.push_back(getIf(code));
 			return new IfAST(cond, then, new BlockAST(elifblock));			
@@ -293,7 +303,6 @@ static ExprAST* getAssignExpr(std::istringstream& code) {
 	Token t = getNext(code);
 	while (t.tokenKind == TokenKind::OPERATOR &&
 			t.opKind == OpKind::ASSIGN) {
-		std::cout << "OpKind: " << static_cast<int>(OpKind::ASSIGN) << '\n';
 		lhs = new BinaryExprAST(OpKind::ASSIGN, lhs, getLogicOrExpr(code));
 		t = getNext(code);
 	}

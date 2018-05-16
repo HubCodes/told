@@ -5,9 +5,16 @@
 #include "lexer.hpp"
 #include "parser.hpp"
 
+#include "llvm/IR/Value.h"
+#include "llvm/IR/Type.h"
+#include "llvm/IR/Constant.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/LLVMContext.h"
+
 static std::string indent;
 
 #define DEBUG_
+
 #ifdef DEBUG_
 #define PRINT(x) std::cout << indent << (x) << '\n';
 #define DEL		"------------------------"
@@ -21,6 +28,8 @@ static std::string indent;
 #endif
 
 #define D(x) static_cast<int>(x)
+
+llvm::LLVMContext context;
 
 static std::unordered_map<int, std::string> opMap = {
 	{ D(OpKind::ADD), "+" },
@@ -38,25 +47,48 @@ static std::unordered_map<int, std::string> opMap = {
 	{ D(OpKind::NEQ), "^" }
 };
 
-void NumberAST::codegen() {
+llvm::Value* NumberAST::codegen() { 
+#ifdef DEBUG_
 	PRINT("NumericAST");
 	PRINT((kind == LiteralKind::CHAR) ? "char data :" + std::to_string(numericData.c) : (kind == LiteralKind::INT) ? "int data: " + std::to_string(numericData.i) : "double data: " + std::to_string(numericData.d));
 	PRINT(DEL);
+	return nullptr;
+#else
+	switch (kind) {
+		case LiteralKind::CHAR:
+			return llvm::ConstantInt::get(getInt8Ty(context), numericData.c);
+		case LiteralKind::INT:
+			return llvm::ConstantInt::get(getInt32Ty(context), numericData.i);
+		case LiteralKind::DOUBLE:
+			return llvm::ConstantFP::get(getDoubleTy(context), numericData.d);
+	}
+#endif
 }
 
-void VariableAST::codegen() {
+llvm::Value* VariableAST::codegen() { 
+#ifdef DEBUG_
 	PRINT("VariableAST");
 	PRINT(id);
 	PRINT(DEL);
+	return nullptr;
+#else
+			
+#endif
 }
 
-void StringAST::codegen() {
+llvm::Value* StringAST::codegen() { 
+#ifdef DEBUG_
 	PRINT("StringAST");
 	PRINT(str);
 	PRINT(DEL);
+	return nullptr;
+#else
+
+#endif
 }
 
-void BinaryExprAST::codegen() {
+llvm::Value* BinaryExprAST::codegen() { 
+#ifdef DEBUG_
 	PRINT("BinaryExprAST");
 	PRINT(opMap[static_cast<int>(kind)]);
 	PUSH;
@@ -64,18 +96,28 @@ void BinaryExprAST::codegen() {
 	rhs->codegen();
 	POP;
 	PRINT(DEL);
+	return nullptr;
+#else
+
+#endif
 }
 
-void UnaryExprAST::codegen() {
+llvm::Value* UnaryExprAST::codegen() { 
+#ifdef DEBUG_
 	PRINT("UnaryExprAST");
 	PRINT(opMap[static_cast<int>(kind)]);
 	PUSH;
 	operand->codegen();
 	POP;
 	PRINT(DEL);
+	return nullptr;
+#else
+
+#endif
 }
 
-void CallExprAST::codegen() {
+llvm::Value* CallExprAST::codegen() { 
+#ifdef DEBUG_
 	PRINT("CallExprAST");
 	PUSH;
 	func->codegen();
@@ -84,24 +126,39 @@ void CallExprAST::codegen() {
 	}
 	POP;
 	PRINT(DEL);
+	return nullptr;
+#else
+
+#endif
 }
 
-void PointerDerefAST::codegen() {
+llvm::Value* PointerDerefAST::codegen() { 
+#ifdef DEBUG_
 	PRINT("PointerDerefAST");
 	PUSH;
 	ptr->codegen();
 	index->codegen();
 	POP;
 	PRINT(DEL);
+	return nullptr;
+#else
+
+#endif
 }
 
-void FunctionDeclAST::codegen() {
+llvm::Value* FunctionDeclAST::codegen() { 
+#ifdef DEBUG_
 	PRINT("FunctionDeclAST");
 	PRINT("function name: " + id);
 	PRINT(DEL);
+	return nullptr;
+#else
+
+#endif
 }
 
-void BlockAST::codegen() {
+llvm::Value* BlockAST::codegen() { 
+#ifdef DEBUG_
 	PRINT("BlockAST");
 	PUSH;
 	for (auto&& a : blockInternal) {
@@ -109,27 +166,42 @@ void BlockAST::codegen() {
 	}
 	POP;
 	PRINT(DEL);
+	return nullptr;
+#else
+
+#endif
 }
 
-void FunctionDefAST::codegen() {
+llvm::Value* FunctionDefAST::codegen() { 
+#ifdef DEBUG_
 	PRINT("FunctionDefAST");
 	PUSH;
 	prototype->codegen();
 	block->codegen();
 	POP;
 	PRINT(DEL);
+	return nullptr;
+#else
+
+#endif
 }
 
-void VarDefAST::codegen() {
+llvm::Value* VarDefAST::codegen() { 
+#ifdef DEBUG_
 	PRINT("VarDefAST");
 	PRINT("Variable name: " + id);
 	PUSH;
 	init->codegen();
 	POP;
 	PRINT(DEL);
+	return nullptr;
+#else
+
+#endif
 }
 
-void IfAST::codegen() {
+llvm::Value* IfAST::codegen() { 
+#ifdef DEBUG_
 	PRINT("IfAST");
 	PUSH;
 	if (cond) {
@@ -143,9 +215,14 @@ void IfAST::codegen() {
 	}
 	POP;
 	PRINT(DEL);
+	return nullptr;
+#else
+
+#endif
 }
 
-void ForAST::codegen() {
+llvm::Value* ForAST::codegen() { 
+#ifdef DEBUG_
 	PRINT("ForAST");
 	PUSH;
 	if (cond) {
@@ -154,9 +231,14 @@ void ForAST::codegen() {
 	then->codegen();
 	POP;
 	PRINT(DEL);
+	return nullptr;
+#else
+
+#endif
 }
 
-void BreakAST::codegen() {
+llvm::Value* BreakAST::codegen() { 
+#ifdef DEBUG_
 	PRINT("BreakAST");
 	PUSH;
 	if (cond) {
@@ -164,9 +246,14 @@ void BreakAST::codegen() {
 	}
 	POP;
 	PRINT(DEL);
+	return nullptr;
+#else
+
+#endif
 }
 
-void ContinueAST::codegen() {
+llvm::Value* ContinueAST::codegen() { 
+#ifdef DEBUG_
 	PRINT("ContinueAST");
 	PUSH;
 	if (cond) {
@@ -174,12 +261,21 @@ void ContinueAST::codegen() {
 	}
 	POP;
 	PRINT(DEL);
+	return nullptr;
+#else
+
+#endif
 }
 
-void ReturnAST::codegen() {
+llvm::Value* ReturnAST::codegen() { 
+#ifdef DEBUG_
 	PRINT("ReturnAST");
 	PUSH;
 	ret->codegen();
 	POP;
 	PRINT(DEL);
+	return nullptr;
+#else
+
+#endif
 }

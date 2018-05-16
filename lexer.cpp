@@ -2,6 +2,7 @@
 
 #include <cctype>
 #include <cstdlib>
+#include <errno.h>
 #include <iostream>
 #include <unordered_map>
 
@@ -124,13 +125,11 @@ static Token getNumber(std::istringstream& code) {
 	else
 		isInt = false;
 
-	try
-	{
-		i = isInt ? std::stoi(numstr) : 0;
-		d = !isInt ? std::stod(numstr) : 0.0;
-	}
-	catch (const std::invalid_argument& e)
-	{
+	errno = 0;
+	char* end;
+	i = isInt ? std::strtol(numstr.c_str(), &end, 10) : 0;
+	d = !isInt ? std::strtod(numstr.c_str(), &end) : 0.0;
+	if (errno) {
 		Token unknown;
 		unknown.tokenKind = TokenKind::UNKNOWN;
 		return unknown;
@@ -310,7 +309,6 @@ static char getEscapeSequence(std::istringstream& code) {
 		{ '0', '\0' }
 	};
 	code.get();	// / 문자 스킵
-	char result;
 	int c = code.get();
 	if (escMap.find(c) == escMap.end())
 	{

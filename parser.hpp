@@ -4,6 +4,7 @@
 #include <vector>
 
 #include "lexer.hpp"
+#include "llvm/IR/Value.h"
 
 union NumericData {
 	char c;
@@ -24,18 +25,18 @@ struct Type {
 class AST {
 public:
 	virtual ~AST() { }
-	virtual void codegen() = 0;
+	virtual llvm::Value* codegen() = 0;
 };
 
 class ExprAST : public AST {
 public:
-	virtual void codegen() = 0;
+	virtual llvm::Value* codegen() = 0;
 };
 
 class NumberAST : public ExprAST {
 public:
 	NumberAST(LiteralKind kind, NumericData numericData) : kind(kind), numericData(numericData) { }
-	virtual void codegen();
+	virtual llvm::Value* codegen();
 private:
 	LiteralKind kind;
 	NumericData numericData;
@@ -44,7 +45,7 @@ private:
 class VariableAST : public ExprAST {
 public:
 	VariableAST(const std::string& id) : id(id) { }
-	virtual void codegen();
+	virtual llvm::Value* codegen();
 private:
 	std::string id;
 };
@@ -52,7 +53,7 @@ private:
 class StringAST : public ExprAST {
 public:
 	StringAST(const std::string& str) : str(str) { }
-	virtual void codegen();
+	virtual llvm::Value* codegen();
 private:
 	std::string str;
 };
@@ -60,7 +61,7 @@ private:
 class BinaryExprAST : public ExprAST {
 public:
 	BinaryExprAST(OpKind kind, ExprAST* lhs, ExprAST* rhs) : kind(kind), lhs(lhs), rhs(rhs) { }
-	virtual void codegen();
+	virtual llvm::Value* codegen();
 private:
 	OpKind kind;
 	ExprAST* lhs;
@@ -70,7 +71,7 @@ private:
 class UnaryExprAST : public ExprAST {
 public:
 	UnaryExprAST(OpKind kind, ExprAST* operand) : kind(kind), operand(operand) { }
-	virtual void codegen();
+	virtual llvm::Value* codegen();
 private:
 	OpKind kind;
 	ExprAST* operand;
@@ -79,7 +80,7 @@ private:
 class CallExprAST : public ExprAST {
 public:
 	CallExprAST(ExprAST* func, const std::vector<ExprAST*>& args) : func(func), args(args) { }
-	virtual void codegen();
+	virtual llvm::Value* codegen();
 private:
 	ExprAST* func;
 	std::vector<ExprAST*> args;
@@ -88,7 +89,7 @@ private:
 class PointerDerefAST : public ExprAST {
 public:
 	PointerDerefAST(ExprAST* ptr, ExprAST* index) : ptr(ptr), index(index) { }
-	virtual void codegen();
+	virtual llvm::Value* codegen();
 private:
 	ExprAST* ptr;
 	ExprAST* index;
@@ -97,7 +98,7 @@ private:
 class FunctionDeclAST : public AST {
 public:
 	FunctionDeclAST(const std::string& id, Type returnType, const std::vector<std::tuple<std::string, Type>>& argsType) : id(id), returnType(returnType), argsType(argsType) { }
-	virtual void codegen();
+	virtual llvm::Value* codegen();
 private:
 	std::string id;
 	Type returnType;
@@ -107,7 +108,7 @@ private:
 class BlockAST : public AST {
 public:
 	BlockAST(const std::vector<AST*>& blockInternal) : blockInternal(blockInternal) { }
-	virtual void codegen();
+	virtual llvm::Value* codegen();
 private:
 	std::vector<AST*> blockInternal;
 };
@@ -115,7 +116,7 @@ private:
 class FunctionDefAST : public AST {
 public:
 	FunctionDefAST(FunctionDeclAST* prototype, BlockAST* block) : prototype(prototype), block(block) { }
-	virtual void codegen();
+	virtual llvm::Value* codegen();
 private:
 	FunctionDeclAST* prototype;
 	BlockAST* block;
@@ -124,7 +125,7 @@ private:
 class VarDefAST : public AST {
 public:
 	VarDefAST(Type type, const std::string& id, ExprAST* init) : type(type), id(id), init(init) { }
-	virtual void codegen();
+	virtual llvm::Value* codegen();
 private:
 	Type type;
 	std::string id;
@@ -134,7 +135,7 @@ private:
 class IfAST : public AST {
 public:
 	IfAST(ExprAST* cond, BlockAST* then, BlockAST* els) : cond(cond), then(then), els(els) { }
-	virtual void codegen();
+	virtual llvm::Value* codegen();
 private:
 	ExprAST* cond;
 	BlockAST* then;
@@ -144,7 +145,7 @@ private:
 class ForAST : public AST {
 public:
 	ForAST(ExprAST* cond, BlockAST* then) : cond(cond), then(then) { }
-	virtual void codegen();
+	virtual llvm::Value* codegen();
 private:
 	ExprAST* cond;
 	BlockAST* then;
@@ -153,7 +154,7 @@ private:
 class BreakAST : public AST {
 public:
 	BreakAST(ExprAST* cond) : cond(cond) { }
-	virtual void codegen();
+	virtual llvm::Value* codegen();
 private:
 	ExprAST* cond;
 };
@@ -161,7 +162,7 @@ private:
 class ContinueAST : public AST {
 public:
 	ContinueAST(ExprAST* cond) : cond(cond) { }
-	virtual void codegen();
+	virtual llvm::Value* codegen();
 private:
 	ExprAST* cond;
 };
@@ -169,7 +170,7 @@ private:
 class ReturnAST : public AST {
 public:
 	ReturnAST(ExprAST* ret) : ret(ret) { }
-	virtual void codegen();
+	virtual llvm::Value* codegen();
 private:
 	ExprAST* ret;
 };

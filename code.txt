@@ -1,26 +1,5 @@
-var x: int = 4;
-var y: double = to_double(x) - 4;
-
 def foo(a: *int, b: *int): int {
-	var x: *int = 4;
-	var y: int = 5;
-	if (x ~ y) {
-		printf("Hello");
-		print((a[3])[4] + 4);
-		a = **a;
-		a = 5 / 2;
-	} else {
-		a = 6 / 3;
-	}
-
-	for (x + 4 / y ~ y | y ~ 5) {
-		for (x < j) {
-			for (x < k) {
-				break;
-			}
-		}
-		continue (x + 4 > 3);
-		return 30 + x;
-	}
-	return 30 + 4 / 2 + 7 - x;
+	var x: *int = [int] {3, 5, 7};
+	var y: *char = "Hello";
+	foo(3);
 }

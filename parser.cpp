@@ -32,6 +32,7 @@ static FunctionDefAST* getFunction(std::istringstream& code);
 static VarDefAST* getVardef(std::istringstream& code);
 static BlockAST* getBlock(std::istringstream& code);
 static ExprAST* getExpr(std::istringstream& code);
+static ExprAST* getArray(std::istringstream& code);
 static ExprAST* getAssignExpr(std::istringstream& code);
 static ExprAST* getLogicOrExpr(std::istringstream& code);
 static ExprAST* getLogicAndExpr(std::istringstream& code);
@@ -294,7 +295,32 @@ static ReturnAST* getReturn(std::istringstream& code) {
 
 static ExprAST* getExpr(std::istringstream& code) {
 	l(__FUNCTION__);
+	Token t = getNext(code);
+	if (t.tokenKind == TokenKind::OPEN_ARR) {
+		return getArray(code);
+	}
+	unget(code);
 	return getAssignExpr(code);
+}
+
+static ExprAST* getArray(std::istringstream& code) {
+	Type t = getType(code);		
+	maybe(code, TokenKind::CLOSE_ARR);
+	maybe(code, TokenKind::OPEN_BLOCK);
+	Token next = getNext(code);
+	if (next.tokenKind == TokenKind::CLOSE_BLOCK) {
+		return new ArrayAST(t, std::vector<ExprAST*>());
+	}
+	unget(code);
+	std::vector<ExprAST*> inits;
+	do {
+		inits.push_back(getAssignExpr(code));
+		next = getNext(code);
+	} while (next.tokenKind == TokenKind::COMMA);
+	if (next.tokenKind != TokenKind::CLOSE_BLOCK) {
+		expected(code, "close block symbol }", "unexpected token");
+	}
+	return new ArrayAST(t, inits);
 }
 
 static ExprAST* getAssignExpr(std::istringstream& code) {

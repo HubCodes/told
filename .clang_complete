@@ -1,2 +1,2 @@
--std=c++17
-`llvm-config --cxxflags --ldflags --system-libs --libs core`
+-std=c++11
+-I/usr/local/llvm-4.0.0/include

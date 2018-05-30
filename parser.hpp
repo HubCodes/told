@@ -4,6 +4,7 @@
 #include <vector>
 #include <unordered_map>
 #include <unordered_set>
+#include <iostream>
 
 #include "lexer.hpp"
 
@@ -29,6 +30,25 @@ enum class TypeCode {
 	DOUBLE,
 	PTR
 };
+
+#define D(x) static_cast<int>(x)
+
+static std::unordered_map<int, std::string> opMap = {
+	{ D(OpKind::ADD), "+" },
+	{ D(OpKind::SUB), "-" },
+	{ D(OpKind::MUL), "*" },
+	{ D(OpKind::DIV), "/" },
+	{ D(OpKind::MOD), "%" },
+	{ D(OpKind::AND), "&" },
+	{ D(OpKind::OR), "|" },
+	{ D(OpKind::NOT), "!" },
+	{ D(OpKind::ASSIGN), "=" },
+	{ D(OpKind::LT), "<" },
+	{ D(OpKind::GT), ">" },
+	{ D(OpKind::EQ), "~" },
+	{ D(OpKind::NEQ), "^" }
+};
+
 
 static TypeCode fromType(Type ty) {
 	if (ty.ptrDepth > 1) {
@@ -158,14 +178,13 @@ public:
 			} else {
 				std::cerr << "Cannot found variable on global namespace :" << varId << '\n';
 				std::exit(EXIT_FAILURE);
+			}
 		}
 	}
 
 	bool isVarIntegral(const std::string& varId, bool isLocal = false, const std::string& funcId = "") {
-		TypeCode tc = getTypeCode(varId, isLocal, funcId)		
+		TypeCode tc = getTypeCode(varId, isLocal, funcId);
 		return tc != TypeCode::DOUBLE;
-	}
-
 	}
 
 	void insertFunction(const std::string& funcId) {
@@ -175,6 +194,10 @@ public:
 	bool isFunction(const std::string& funcId) {
 		return functions.find(funcId) != functions.end();
 	}
+
+	const std::vector<std::string>& getDataSeg() { return data; }
+	
+	const std::vector<std::string>& getTextSeg() { return text; }
 
 private:
 	CodeManager() : data(), text(), label(".temp0"), nowFunction(), localVars(), globalVars(), nowOffset(), functions() { }
@@ -187,6 +210,8 @@ private:
 	std::unordered_map<std::string, int> nowOffset;
 	std::unordered_set<std::string> functions;
 };
+
+static CodeManager& manager = CodeManager::get();
 
 class AST {
 public:
@@ -277,10 +302,10 @@ public:
 			std::exit(EXIT_FAILURE);
 		}
 		CodeManager& m = CodeManager::get();
-		bool isLocal = m.isLocalVar(p->getId());
+		bool isLocal = !m.getNowFunction().empty();
 		return isLocal ?
-			fromType(CodeManager::get().getTypeCode(p->getId(), true, m.getNowFunction())) :
-			fromType(CodeManager::get().getTypeCode(p->getId()));
+			CodeManager::get().getTypeCode(p->getId(), true, m.getNowFunction()) :
+			CodeManager::get().getTypeCode(p->getId());
 	}
 private:
 	ExprAST* ptr;

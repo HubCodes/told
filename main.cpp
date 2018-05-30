@@ -45,5 +45,13 @@ int main(int argc, char** argv) {
 		ast->codegen();
 		std::cout << '\n';
 	}
+
+	CodeManager& m = CodeManager::get();
+	for (auto&& str : m.getDataSeg()) {
+		std::cout << str << '\n';
+	}
+	for (auto&& str : m.getTextSeg()) {
+		std::cout << str << '\n';
+	}
 	return 0;
 }

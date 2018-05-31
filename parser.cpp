@@ -560,6 +560,8 @@ static Type getType(std::istringstream& code) {
 		}
 		result.returnType = new Type(getType(code));	
 		maybe(code, TokenKind::CLOSE_PAREN);
-	}	
+	} else {
+		result.ptrDepth = ptrDepth;
+	}
 	return result;
 }

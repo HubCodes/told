@@ -42,7 +42,18 @@ const char* getMovInstr(Type type) {
 		return "movl";
 	}
 }
-
+void printType(Type t) {
+	std::string tykind;
+	if (t.kind == TypeKind::CHAR) {
+		tykind = "char";
+	} else if (t.kind == TypeKind::INT) {
+		tykind = "int";
+	} else if (t.kind == TypeKind::DOUBLE) {
+		tykind = "double";
+	} else {
+		tykind = "func";
+	}
+}
 /*
  * void NumberAST::codegen()
  *
@@ -235,11 +246,14 @@ void pushAssignExpr(ExprAST* lhs, bool leftInt, bool rightInt) {
 		std::string instr = (t == TypeCode::CHAR) ? 
 				"movb" : (t == TypeCode::INT) ?
 				"movl" : "movq";
+		std::string reg = (t == TypeCode::CHAR) ?
+				"bl" : (t == TypeCode::INT) ?
+				"ebx" : "rbx";
 		if (leftInt) {
 			if (!rightInt) {
 				manager.push(CodeManager::TEXT, "cvttsd2si %xmm1, %rbx", true);
 			}
-			manager.push(CodeManager::TEXT, instr + " %rbx, (%rdx)", true);
+			manager.push(CodeManager::TEXT, instr + " %" + reg + ", (%rdx)", true);
 		} else {
 			if (rightInt) {
 				manager.push(CodeManager::TEXT, "cvtsi2sdl %rbx, %xmm1", true);
@@ -259,11 +273,14 @@ void pushAssignExpr(ExprAST* lhs, bool leftInt, bool rightInt) {
 		std::string instr = (t == TypeCode::CHAR) ? 
 			"movb" : (t == TypeCode::INT) ?
 			"movl" : "movq";
+		std::string reg = (t == TypeCode::CHAR) ?
+			"al" : (t == TypeCode::INT) ?
+			"eax" : "rax";
 		if (leftInt) {
 			if (!rightInt) {
 				manager.push(CodeManager::TEXT, "cvttsd2si %xmm1, %rbx", true);
 			}
-			manager.push(CodeManager::TEXT, instr + " %rbx, (%rcx)", true);
+			manager.push(CodeManager::TEXT, instr + " %" + reg + ", (%rcx)", true);
 		} else {
 			if (rightInt) {
 				manager.push(CodeManager::TEXT, "cvtsi2sdl %rbx, %xmm1", true);
@@ -405,7 +422,7 @@ void FunctionDeclAST::codegen() {
 	PRINT("function name: " + id);
 	PRINT(DEL);
 #else
-
+	
 #endif
 }
 
@@ -447,12 +464,22 @@ void FunctionDefAST::codegen() {
 	// 4. rbp = rsp로 한 프레임 증가
 	manager.push(CodeManager::TEXT, "mov %rsp, %rbp", true);
 	// 5. local 변수는 스택에 쌓는다.
-	int stackTo = block->getVariableCount() * 8;
+	int stackTo = (block->getVariableCount() + prototype->argsCount()) * 8;
 	manager.push(CodeManager::TEXT, "sub $" + std::to_string(stackTo) + ", %rsp", true);
+	for (int i = 0, j = 8; i < prototype->argsCount(); i++, j += 8) {
+		manager.push(CodeManager::TEXT, "mov " + std::to_string(8+j) + "(%rbp), %rax", true);
+		auto&& idAndType = prototype->getArg();
+		manager.insertLocalVar(id, idAndType.first, idAndType.second); 
+		manager.push(CodeManager::TEXT, "mov %rax, -" + std::to_string(j) + "(%rbp)", true);
+	}
 
 	// 함수 본문
 	block->codegen();	
 
+	if (manager.getTextSeg().back() == "\tret") {
+		manager.setNowFunction();
+		return;
+	}
 	// 함수 에필로그
 	// 6. rsp = rbp로 프레임 해체 시작
 	// 7. rbp = caller's rbp로 프레임 해체 진행
@@ -531,9 +558,9 @@ void VarDefAST::codegen() {
 	// 지역 변수일 때
 	if (!nowFunc.empty()) {
 		manager.insertLocalVar(nowFunc, id, type);
+		int offset = manager.getLocalVarOffset(nowFunc, id);
 		if (init) {
 			init->codegen();
-			int offset = manager.getLocalVarOffset(nowFunc, id);
 			if (init->isIntegral()) {
 				std::string instr(getMovInstr(type));
 				manager.push(CodeManager::TEXT, instr + " %rax, -" + std::to_string(offset) + "(%rbp)", true);
@@ -790,3 +817,124 @@ bool PointerDerefAST::isIntegral() {
 bool ArrayAST::isIntegral() {
 	return true;
 }
+
+void CodeManager::clear() {
+	data.clear();
+	text.clear();
+}
+
+void CodeManager::getNextLabel() {
+	int counter = std::stoi(label.substr(5, label.size() - 5));
+	label = label.substr(0, 5) + std::to_string(counter + 1);
+}	
+
+std::string CodeManager::getLabel() {
+	return label;
+}
+
+void CodeManager::push(Section section, std::string code, bool isIndent) {
+	if (isIndent) {
+		code = "\t" + code;
+	}
+	switch (section) {
+		case DATA:
+			data.push_back(code);
+			break;
+		case TEXT:
+			text.push_back(code);
+			break;
+	}
+}
+
+void CodeManager::setNowFunction(const std::string& id) {
+	nowFunction = id;
+}
+
+void CodeManager::setNowFunction() {
+	nowFunction.clear();
+}
+
+const std::string& CodeManager::getNowFunction() {
+	return nowFunction;
+}
+
+void CodeManager::insertGlobalVar(const std::string& id, Type ty) {
+	globalVars[id] = ty;
+}
+
+bool CodeManager::isGlobalVar(const std::string& id) {
+	return globalVars.find(id) != globalVars.end();
+}
+
+bool CodeManager::isLocalVar(const std::string& funcId, const std::string& varId) {
+	if (funcId.empty()) return false;
+	const std::vector<std::tuple<std::string, int, Type>>& local = localVars[funcId];
+	for (int i = 0; i < local.size(); ++i) {
+		if (std::get<0>(local[i]) == varId) 
+			return true;
+	}
+	return false;
+}
+
+void CodeManager::insertLocalVar(const std::string& funcId, const std::string& varId, Type ty) {
+	if (nowOffset.find(funcId) == nowOffset.end()) {
+		nowOffset[funcId] = 8;
+	}
+	localVars[funcId].push_back(std::make_tuple(varId, nowOffset[funcId], ty));
+	nowOffset[funcId] += 8;
+}
+
+int CodeManager::getLocalVarOffset(const std::string& funcId, const std::string& varId) {
+	const std::vector<std::tuple<std::string, int, Type>>& local = localVars[funcId];
+	for (int i = 0; i < local.size(); ++i) {
+		if (std::get<0>(local[i]) == varId) {
+			return std::get<1>(local[i]);
+		}
+	}
+	std::cerr << "Cannot fount variable " << varId << '\n';
+	std::exit(EXIT_FAILURE);
+}
+
+TypeCode CodeManager::getTypeCode(const std::string& varId, bool isLocal, const std::string& funcId) {
+	if (isLocal) {
+		if (localVars.find(funcId) != localVars.end()) {
+			const std::vector<std::tuple<std::string, int, Type>>& local = localVars[funcId];
+			for (int i = 0; i < local.size(); ++i) {
+				if (std::get<0>(local[i]) == varId) {
+					return fromType(std::get<2>(local[i]));	
+				}
+			}
+			std::cerr << "Cannot found variable " << varId << " on function " << funcId << '\n';
+			std::exit(EXIT_FAILURE);
+		} else {
+			std::cerr << "Cannot found function " << funcId << '\n';
+			std::exit(EXIT_FAILURE);
+		}
+	} else {
+		if (globalVars.find(varId) != globalVars.end()) {
+			return fromType(globalVars[funcId]);
+		} else {
+			std::cerr << "Cannot found variable on global namespace :" << varId << '\n';
+			std::exit(EXIT_FAILURE);
+		}
+	}
+}
+
+bool CodeManager::isVarIntegral(const std::string& varId, bool isLocal, const std::string& funcId) {
+	TypeCode tc = getTypeCode(varId, isLocal, funcId);
+	return tc != TypeCode::DOUBLE;
+}
+
+void CodeManager::insertFunction(const std::string& funcId) {
+	functions.insert(funcId);
+}
+
+bool CodeManager::isFunction(const std::string& funcId) {
+	return functions.find(funcId) != functions.end();
+}
+
+const std::vector<std::string>& CodeManager::getDataSeg() { return data; }
+	
+const std::vector<std::string>& CodeManager::getTextSeg() { return text; }
+
+

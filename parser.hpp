@@ -23,7 +23,9 @@ struct Type {
 
 	int ptrDepth; // func kind를 가지고 있다면 1과 같거나 더 크다.
 };
+/*
 
+*/		
 enum class TypeCode {
 	CHAR,
 	INT,
@@ -80,124 +82,41 @@ public:
 		return manager;
 	}
 
-	void clear() {
-		data.clear();
-		text.clear();
-	}
+	void clear();
 
-	void getNextLabel() {
-		int counter = std::stoi(label.substr(5, label.size() - 5));
-		label = label.substr(0, 5) + std::to_string(counter + 1);
-	}
+	void getNextLabel();
 	
-	std::string getLabel() {
-		return label;
-	}
+	std::string getLabel();
 
-	void push(Section section, std::string code, bool isIndent = false) {
-		if (isIndent) {
-			code = "\t" + code;
-		}
-		switch (section) {
-			case DATA:
-				data.push_back(code);
-				break;
-			case TEXT:
-				text.push_back(code);
-				break;
-		}
-	}
+	void push(Section section, std::string code, bool isIndent = false);
 
-	void setNowFunction(const std::string& id) {
-		nowFunction = id;
-	}
+	void setNowFunction(const std::string& id);
 
-	void setNowFunction() {
-		nowFunction.clear();
-	}
+	void setNowFunction();
 
-	const std::string& getNowFunction() {
-		return nowFunction;
-	}
+	const std::string& getNowFunction();
 
-	void insertGlobalVar(const std::string& id, Type ty) {
-		globalVars[id] = ty;
-	}
+	void insertGlobalVar(const std::string& id, Type ty);
 
-	bool isGlobalVar(const std::string& id) {
-		return globalVars.find(id) != globalVars.end();
-	}
+	bool isGlobalVar(const std::string& id);
 
-	bool isLocalVar(const std::string& funcId, const std::string& varId) {
-		if (funcId.empty()) return false;
-		const std::vector<std::tuple<std::string, int, Type>>& local = localVars[funcId];
-		for (int i = 0; i < local.size(); ++i) {
-			if (std::get<0>(local[i]) == varId) 
-				return true;
-		}
-		return false;
-	}
+	bool isLocalVar(const std::string& funcId, const std::string& varId);
 
-	void insertLocalVar(const std::string& funcId, const std::string& varId, Type ty) {
-		if (nowOffset.find(funcId) == nowOffset.end()) {
-			nowOffset[funcId] = 8;
-		}
-		localVars[funcId].push_back(std::make_tuple(varId, nowOffset[funcId], ty));
-		nowOffset[funcId] += 8;
-	}
+	void insertLocalVar(const std::string& funcId, const std::string& varId, Type ty);
 
-	int getLocalVarOffset(const std::string& funcId, const std::string& varId) {
-		const std::vector<std::tuple<std::string, int, Type>>& local = localVars[funcId];
-		for (int i = 0; i < local.size(); ++i) {
-			if (std::get<0>(local[i]) == varId) {
-				return std::get<1>(local[i]);
-			}
-		}
-		std::cerr << "Cannot fount variable " << varId << '\n';
-		std::exit(EXIT_FAILURE);
-	}
+	int getLocalVarOffset(const std::string& funcId, const std::string& varId);
 
-	TypeCode getTypeCode(const std::string& varId, bool isLocal = false, const std::string& funcId = "") {
-		if (isLocal) {
-			if (localVars.find(funcId) != localVars.end()) {
-				const std::vector<std::tuple<std::string, int, Type>>& local = localVars[funcId];
-				for (int i = 0; i < local.size(); ++i) {
-					if (std::get<0>(local[i]) == varId) {
-						return fromType(std::get<2>(local[i]));	
-					}
-				}
-				std::cerr << "Cannot found variable " << varId << " on function " << funcId << '\n';
-				std::exit(EXIT_FAILURE);
-			} else {
-				std::cerr << "Cannot found function " << funcId << '\n';
-				std::exit(EXIT_FAILURE);
-			}
-		} else {
-			if (globalVars.find(varId) != globalVars.end()) {
-				return fromType(globalVars[funcId]);
-			} else {
-				std::cerr << "Cannot found variable on global namespace :" << varId << '\n';
-				std::exit(EXIT_FAILURE);
-			}
-		}
-	}
+	TypeCode getTypeCode(const std::string& varId, bool isLocal = false, const std::string& funcId = "");
 
-	bool isVarIntegral(const std::string& varId, bool isLocal = false, const std::string& funcId = "") {
-		TypeCode tc = getTypeCode(varId, isLocal, funcId);
-		return tc != TypeCode::DOUBLE;
-	}
+	bool isVarIntegral(const std::string& varId, bool isLocal = false, const std::string& funcId = "");
 
-	void insertFunction(const std::string& funcId) {
-		functions.insert(funcId);
-	}
+	void insertFunction(const std::string& funcId) ;
 
-	bool isFunction(const std::string& funcId) {
-		return functions.find(funcId) != functions.end();
-	}
+	bool isFunction(const std::string& funcId) ;
 
-	const std::vector<std::string>& getDataSeg() { return data; }
+	const std::vector<std::string>& getDataSeg();
 	
-	const std::vector<std::string>& getTextSeg() { return text; }
+	const std::vector<std::string>& getTextSeg();
 
 private:
 	CodeManager() : data(), text(), label(".temp0"), nowFunction(), localVars(), globalVars(), nowOffset(), functions() { }
@@ -319,6 +238,13 @@ public:
 	std::string getId() const noexcept { return id; }
 	Type getReturnType() const noexcept { return returnType; }
 	int argsCount() const noexcept { return argsType.size(); }
+	std::pair<std::string, Type> getArg() {
+		static int index = 0;
+		std::string first = std::get<0>(argsType[index]);
+		Type second = std::get<1>(argsType[index]);
+		index++;
+		return std::make_pair(first, second);
+	}
 private:
 	std::string id;
 	Type returnType;
@@ -344,6 +270,8 @@ public:
 		for (int i = 0; i < blockInternal.size(); ++i) {
 			if (VarDefAST* vardef = dynamic_cast<VarDefAST*>(blockInternal[i])) {
 				count++;	
+			} else {
+				break;
 			}
 		}
 		return count;

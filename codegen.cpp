@@ -563,7 +563,10 @@ void VarDefAST::codegen() {
 			init->codegen();
 			if (init->isIntegral()) {
 				std::string instr(getMovInstr(type));
-				manager.push(CodeManager::TEXT, instr + " %rax, -" + std::to_string(offset) + "(%rbp)", true);
+				std::string reg = (instr == "movb") ? 
+					"al" : (instr == "movl") ?
+					"eax" : "rax";
+				manager.push(CodeManager::TEXT, instr + " %" + reg + ", -" + std::to_string(offset) + "(%rbp)", true);
 			} else {
 				manager.push(CodeManager::TEXT, "movsd %xmm0, -" + std::to_string(offset) + "(%rbp)", true);
 			}

@@ -9,20 +9,22 @@ foo:
 	mov %rax, -8(%rbp)
 	mov $4, %rax
 	mov %rax, %rbx
-	mov %rbp, %rdx
-	sub $8, %rdx
-	movb %al, (%rdx)
-	movzbq -8(%rbp), %rax
+	movl -8(%rbp), %eax
+	add %rbx, %rax
 	leave
 	ret
 .global main
 main:
 	push %rbp
 	mov %rsp, %rbp
-	sub $0, %rsp
+	sub $16, %rsp
+	mov $4, %rax
+	movl %eax, -8(%rbp)
+	mov $8, %rax
+	movl %eax, -16(%rbp)
 	movabsq $foo, %rax
 	mov %rax, %rbx
-	mov $5, %rax
+	movl -16(%rbp), %eax
 	push %rax
 	call *%rbx
 	leave

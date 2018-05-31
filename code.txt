@@ -1,8 +1,9 @@
-def foo(a: char): int {
-	a = 4;
-	return a;
+def foo(a: int): int {
+	return a + 4;
 }
 
 def main(): int {
-	foo(5);
+	var a: int = 4;
+	var b: int = 8;
+	foo(b);
 }

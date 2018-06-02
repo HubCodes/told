@@ -2,13 +2,19 @@ use fio;
 
 def main(): int {
 	var buf: *char = "Hello, world!  ";
-	var i: int = 0;
+	var buf2: *char = "Good night! ";
+	var i: int = 10;
+	var j: int = 10;
 
 	buf[13] = 10;
 	buf[14] = 0;
 
-	if (i > 10) {
+	buf2[10] = 10;
+	buf2[11] = 0;
+
+	for (1) {
 		putstr(buf, 14);
-		i = i + 1;
+		i = i - 1;
+		break (i < 0);
 	}
 }

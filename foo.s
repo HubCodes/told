@@ -2,16 +2,22 @@
 .section .data
 .temp1:
 	.asciz "Hello, world!  "
+.temp2:
+	.asciz "Good night! "
 .section .text
 .global main
 main:
 	push %rbp
 	mov %rsp, %rbp
-	sub $16, %rsp
+	sub $32, %rsp
 	movabs $.temp1, %rax
 	mov %rax, -8(%rbp)
-	mov $0, %rax
-	movl %eax, -16(%rbp)
+	movabs $.temp2, %rax
+	mov %rax, -16(%rbp)
+	mov $10, %rax
+	movl %eax, -24(%rbp)
+	mov $10, %rax
+	movl %eax, -32(%rbp)
 	mov $10, %rax
 	mov %rax, %rbx
 	mov %rbp, %rax
@@ -32,12 +38,26 @@ main:
 	movb %bl, (%rcx)
 	mov $10, %rax
 	mov %rax, %rbx
-	movl -16(%rbp), %eax
-	cmp %rbx, %rax
-	setg %al
-	movzbq %al, %rax
+	mov %rbp, %rax
+	sub $16, %rax
+	mov (%rax), %rax
+	mov %rax, %rcx
+	mov $10, %rax
+	add %rax, %rcx
+	movb %bl, (%rcx)
+	mov $0, %rax
+	mov %rax, %rbx
+	mov %rbp, %rax
+	sub $16, %rax
+	mov (%rax), %rax
+	mov %rax, %rcx
+	mov $11, %rax
+	add %rax, %rcx
+	movb %bl, (%rcx)
+.temp3:
+	mov $1, %rax
 	cmp $0, %rax
-	je .temp2
+	je .temp4
 	movabsq $putstr, %rax
 	mov %rax, %rbx
 	mov $14, %rax
@@ -50,12 +70,23 @@ main:
 	add $24, %rsp
 	mov $1, %rax
 	mov %rax, %rbx
-	movl -16(%rbp), %eax
-	add %rbx, %rax
+	movl -24(%rbp), %eax
+	cltq
+	sub %rbx, %rax
 	mov %rax, %rbx
 	mov %rbp, %rdx
-	sub $16, %rdx
+	sub $24, %rdx
 	movl %ebx, (%rdx)
-.temp2:
+	mov $0, %rax
+	mov %rax, %rbx
+	movl -24(%rbp), %eax
+	cltq
+	cmp %rbx, %rax
+	setl %al
+	movzbq %al, %rax
+	cmp $0, %rax
+	jne .temp4
+	jmp .temp3
+.temp4:
 	leave
 	ret

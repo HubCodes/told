@@ -107,6 +107,7 @@ void loadVar(VariableAST* var) {
 				break;
 			case TypeCode::INT:
 				manager.push(CodeManager::TEXT, "movl -" + offset + "(%rbp), %eax", true);
+				manager.push(CodeManager::TEXT, "cltq", true);
 				break;
 			case TypeCode::DOUBLE:
 				manager.push(CodeManager::TEXT, "movsd -" + offset + "(%rbp), %xmm0", true);

@@ -52,7 +52,8 @@ enum class KeywordKind {
 	FOR,
 	BREAK,
 	CONTINUE,
-	RETURN
+	RETURN,
+	USE
 };
 
 enum class LiteralKind {

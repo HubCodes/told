@@ -1,9 +1,14 @@
-def foo(a: int): int {
-	return a + 4;
-}
+use fio;
 
 def main(): int {
-	var a: int = 4;
-	var b: int = 8;
-	foo(b);
+	var buf: *char = "Hello, world!  ";
+	var i: int = 0;
+
+	buf[13] = 10;
+	buf[14] = 0;
+
+	if (i > 10) {
+		putstr(buf, 14);
+		i = i + 1;
+	}
 }

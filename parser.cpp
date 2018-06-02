@@ -55,6 +55,7 @@ static ReturnAST* getReturn(std::istringstream& code);
 static void expected(std::istringstream& code, const char* expected, const char* msg);
 static void wrong(std::istringstream& code, const char* wron);
 static void maybe(std::istringstream& code, TokenKind kind);
+static void use(const std::string& module);
 
 static void expected(std::istringstream& code, const char* expected, const char* msg) {
 	code.unget();
@@ -93,12 +94,26 @@ std::vector<AST*> parse(std::istringstream& code) {
 		} else if (token.tokenKind == TokenKind::KEYWORD &&
 			token.keywordKind == KeywordKind::VAR) {
 			result.push_back(getVardef(code));	
+		} else if (token.tokenKind == TokenKind::KEYWORD &&
+			token.keywordKind == KeywordKind::USE) {
+			Token usingg = getNext(code);		
+			use(usingg.ident);
+			maybe(code, TokenKind::SEMICOLON);
 		} else {
 			expected(code, "toplevel definitions", "unknown");
 		}
 		token = getNext(code);
 	}
 	return result;
+}
+
+static void use(const std::string& module) {
+	CodeManager& m = CodeManager::get();
+	Stdlib& s = Stdlib::get();
+	const std::vector<std::string>& vec = s.getFuncs(module);
+	std::for_each(vec.begin(), vec.end(), [&m](const std::string& funcId) {
+		m.insertFunction(funcId);
+	});
 }
 
 static bool isDefinableVar = false;

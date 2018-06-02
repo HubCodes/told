@@ -47,9 +47,11 @@ int main(int argc, char** argv) {
 	}
 
 	CodeManager& m = CodeManager::get();
+	std::cout << ".section .data\n";
 	for (auto&& str : m.getDataSeg()) {
 		std::cout << str << '\n';
 	}
+	std::cout << ".section .text\n";
 	for (auto&& str : m.getTextSeg()) {
 		std::cout << str << '\n';
 	}

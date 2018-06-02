@@ -53,7 +53,7 @@ static std::unordered_map<int, std::string> opMap = {
 
 
 static TypeCode fromType(Type ty) {
-	if (ty.ptrDepth > 1) {
+	if (ty.ptrDepth > 0) {
 		return TypeCode::PTR;
 	} else if (ty.kind == TypeKind::CHAR) {
 		return TypeCode::CHAR;
@@ -106,6 +106,8 @@ public:
 
 	int getLocalVarOffset(const std::string& funcId, const std::string& varId);
 
+	Type getTypeObject(const std::string& varId, bool isLocal = false, const std::string& funcId = "");
+
 	TypeCode getTypeCode(const std::string& varId, bool isLocal = false, const std::string& funcId = "");
 
 	bool isVarIntegral(const std::string& varId, bool isLocal = false, const std::string& funcId = "");
@@ -131,6 +133,36 @@ private:
 };
 
 static CodeManager& manager = CodeManager::get();
+
+class Stdlib final {
+public:
+	~Stdlib() { }	
+	Stdlib(const Stdlib& other) = delete;
+	Stdlib& operator=(const Stdlib& other) = delete;
+	static Stdlib& get() {
+		static Stdlib lib;
+		return lib;
+	}
+	const std::vector<std::string>& getFuncs(const std::string& module) {
+		if (libs.find(module) == libs.end()) {
+			std::cerr << "Cannot found module " << module << '\n';
+			std::exit(EXIT_FAILURE);
+		}
+		return libs[module];
+	}
+private:
+	Stdlib() : libs() {
+		libs["fio"].push_back("opend");
+		libs["fio"].push_back("closed");
+		libs["fio"].push_back("readd");
+		libs["fio"].push_back("writed");
+		libs["fio"].push_back("getstr");
+		libs["fio"].push_back("putstr");
+		libs["fio"].push_back("putlinefd");
+		libs["fio"].push_back("getlinefd");
+	}
+	std::unordered_map<std::string, std::vector<std::string>> libs;
+};
 
 class AST {
 public:
@@ -215,20 +247,33 @@ public:
 	ExprAST* getPtr() noexcept { return ptr; }
 	ExprAST* getIndex() noexcept { return index; }
 	TypeCode getType() noexcept {
+		CodeManager& m = check();
+		VariableAST* p = dynamic_cast<VariableAST*>(ptr);
+		bool isLocal = !m.getNowFunction().empty();
+		return isLocal ?
+			CodeManager::get().getTypeCode(p->getId(), true, m.getNowFunction()) :
+			CodeManager::get().getTypeCode(p->getId());
+	}
+	Type getTypeObject() const noexcept {
+		CodeManager& m = check();
+		VariableAST* p = dynamic_cast<VariableAST*>(ptr);
+		bool isLocal = !m.getNowFunction().empty();
+		Type t = isLocal ? m.getTypeObject(p->getId(), true, m.getNowFunction()) :
+							m.getTypeObject(p->getId());
+		return t;
+	}
+private:
+	ExprAST* ptr;
+	ExprAST* index;
+	CodeManager& check() const noexcept {
 		VariableAST* p = dynamic_cast<VariableAST*>(ptr);
 		if (p == nullptr) {
 			std::cerr << "Pointer dereference must have only one address variable, not complex.\n";
 			std::exit(EXIT_FAILURE);
 		}
 		CodeManager& m = CodeManager::get();
-		bool isLocal = !m.getNowFunction().empty();
-		return isLocal ?
-			CodeManager::get().getTypeCode(p->getId(), true, m.getNowFunction()) :
-			CodeManager::get().getTypeCode(p->getId());
+		return m;
 	}
-private:
-	ExprAST* ptr;
-	ExprAST* index;
 };
 
 class FunctionDeclAST : public AST {

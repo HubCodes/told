@@ -112,7 +112,9 @@ void loadVar(VariableAST* var) {
 				manager.push(CodeManager::TEXT, "movsd -" + offset + "(%rbp), %xmm0", true);
 				break;
 			case TypeCode::PTR:
-				manager.push(CodeManager::TEXT, "movq -" + offset + "(%rbp), %rax", true);
+				manager.push(CodeManager::TEXT, "mov %rbp, %rax", true);
+				manager.push(CodeManager::TEXT, "sub $" + offset + ", %rax", true);
+				manager.push(CodeManager::TEXT, "mov (%rax), %rax", true);
 				break;
 		}
 	}
@@ -154,7 +156,7 @@ void StringAST::codegen() {
 	manager.getNextLabel();
 	manager.push(CodeManager::DATA, manager.getLabel() + ":");
 	manager.push(CodeManager::DATA, ".asciz \"" + str + "\"", true);
-	manager.push(CodeManager::TEXT, "mov " + manager.getLabel() + ", %rax", true);
+	manager.push(CodeManager::TEXT, "movabs $" + manager.getLabel() + ", %rax", true);
 #endif
 }
 
@@ -228,12 +230,12 @@ void pushBinopExpr(OpKind op, bool isDouble) {
 void pushAssignExpr(ExprAST* lhs, bool leftInt, bool rightInt) {
 	VariableAST* test1 = dynamic_cast<VariableAST*>(lhs);
 	PointerDerefAST* test2 = dynamic_cast<PointerDerefAST*>(lhs);
-	
+	std::string nowFunc = manager.getNowFunction();	
+
 	// 1. 변수라면
 	if (test1 != nullptr) {
 		const std::string& id = test1->getId();		
 		int offset = manager.getLocalVarOffset(manager.getNowFunction(), id);
-		std::string nowFunc = manager.getNowFunction();
 		TypeCode t;
 		if (manager.isLocalVar(nowFunc, id)) {
 			manager.push(CodeManager::TEXT, "mov %rbp, %rdx", true);
@@ -269,13 +271,16 @@ void pushAssignExpr(ExprAST* lhs, bool leftInt, bool rightInt) {
 		test2->getIndex()->codegen();
 		manager.push(CodeManager::TEXT, "add %rax, %rcx", true);
 		// 현재 시점 : rbx = 대입될 값, rcx = 포인터 값(확정)
-		TypeCode t = test2->getType();
-		std::string instr = (t == TypeCode::CHAR) ? 
+		Type to = test2->getTypeObject();
+		to.ptrDepth--;
+		TypeCode t = fromType(to);
+		std::string instr = 
+			(t == TypeCode::CHAR) ? 
 			"movb" : (t == TypeCode::INT) ?
 			"movl" : "movq";
 		std::string reg = (t == TypeCode::CHAR) ?
-			"al" : (t == TypeCode::INT) ?
-			"eax" : "rax";
+			"bl" : (t == TypeCode::INT) ?
+			"ebx" : "rbx";
 		if (leftInt) {
 			if (!rightInt) {
 				manager.push(CodeManager::TEXT, "cvttsd2si %xmm1, %rbx", true);
@@ -387,6 +392,7 @@ void CallExprAST::codegen() {
 		manager.push(CodeManager::TEXT, "push %rax", true);
 	}
 	manager.push(CodeManager::TEXT, "call *%rbx", true);
+	manager.push(CodeManager::TEXT, "add $" + std::to_string(8 * args.size() + 8) + ", %rsp", true);
 #endif
 }
 
@@ -621,6 +627,7 @@ void ArrayAST::codegen() {
 	}  
 	manager.getNextLabel();
 	std::string arrLabel = manager.getLabel();
+	manager.push(CodeManager::TEXT, "movabsq $" + arrLabel + ", %rax", true);
 	manager.push(CodeManager::DATA, arrLabel + ":");
 	for (auto&& a : inits) {
 		NumberAST* code = dynamic_cast<NumberAST*>(a);
@@ -660,24 +667,14 @@ void IfAST::codegen() {
 #else
 	if (cond) {
 		manager.getNextLabel();
-		std::string thenLabel = manager.getLabel();
-		manager.getNextLabel();
 		std::string elseLabel = manager.getLabel();
-		manager.getNextLabel();
-		std::string endLabel = manager.getLabel();
 		cond->codegen();
 		manager.push(CodeManager::TEXT, "cmp $0, %rax", true);
+		manager.push(CodeManager::TEXT, "je " + elseLabel, true);
+		then->codegen();
+		manager.push(CodeManager::TEXT, elseLabel + ":");
 		if (els) {
-			manager.push(CodeManager::TEXT, "je " + elseLabel, true);
-			then->codegen();
-		} else {
-			manager.push(CodeManager::TEXT, "jmp " + endLabel, true);
-		}
-		if (els) {
-			manager.push(CodeManager::TEXT, elseLabel + ":");
 			els->codegen();
-		} else {
-			manager.push(CodeManager::TEXT, endLabel + ":");
 		}
 	} else {
 		then->codegen();
@@ -755,6 +752,7 @@ void ContinueAST::codegen() {
 			cond->codegen();
 			manager.push(CodeManager::TEXT, "cmp $0, %rax", true);
 			manager.push(CodeManager::TEXT, "jne " + pair.second, true);
+
 		} else {
 			manager.push(CodeManager::TEXT, "jmp " + pair.second, true);
 		}
@@ -898,13 +896,13 @@ int CodeManager::getLocalVarOffset(const std::string& funcId, const std::string&
 	std::exit(EXIT_FAILURE);
 }
 
-TypeCode CodeManager::getTypeCode(const std::string& varId, bool isLocal, const std::string& funcId) {
+Type CodeManager::getTypeObject(const std::string& varId, bool isLocal, const std::string& funcId) {
 	if (isLocal) {
 		if (localVars.find(funcId) != localVars.end()) {
 			const std::vector<std::tuple<std::string, int, Type>>& local = localVars[funcId];
 			for (int i = 0; i < local.size(); ++i) {
 				if (std::get<0>(local[i]) == varId) {
-					return fromType(std::get<2>(local[i]));	
+					return std::get<2>(local[i]);	
 				}
 			}
 			std::cerr << "Cannot found variable " << varId << " on function " << funcId << '\n';
@@ -915,12 +913,16 @@ TypeCode CodeManager::getTypeCode(const std::string& varId, bool isLocal, const 
 		}
 	} else {
 		if (globalVars.find(varId) != globalVars.end()) {
-			return fromType(globalVars[funcId]);
+			return globalVars[funcId];
 		} else {
 			std::cerr << "Cannot found variable on global namespace :" << varId << '\n';
 			std::exit(EXIT_FAILURE);
 		}
 	}
+}
+
+TypeCode CodeManager::getTypeCode(const std::string& varId, bool isLocal, const std::string& funcId) {
+	return fromType(getTypeObject(varId, isLocal, funcId));
 }
 
 bool CodeManager::isVarIntegral(const std::string& varId, bool isLocal, const std::string& funcId) {

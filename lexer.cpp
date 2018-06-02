@@ -14,7 +14,8 @@ static std::unordered_map<std::string, KeywordKind> keywordMap = {
 	{ "for", KeywordKind::FOR },
 	{ "break", KeywordKind::BREAK },
 	{ "continue", KeywordKind::CONTINUE },
-	{ "return", KeywordKind::RETURN }
+	{ "return", KeywordKind::RETURN },
+	{ "use", KeywordKind::USE }
 };
 
 static std::unordered_map<std::string, TypeKind> typeMap = {

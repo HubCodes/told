@@ -34,10 +34,28 @@ main:
 	mov %rax, %rbx
 	movl -16(%rbp), %eax
 	cmp %rbx, %rax
-	setl %al
+	setg %al
 	movzbq %al, %rax
 	cmp $0, %rax
-	je .temp4
-.temp4:
+	je .temp2
+	movabsq $putstr, %rax
+	mov %rax, %rbx
+	mov $14, %rax
+	push %rax
+	mov %rbp, %rax
+	sub $8, %rax
+	mov (%rax), %rax
+	push %rax
+	call *%rbx
+	add $24, %rsp
+	mov $1, %rax
+	mov %rax, %rbx
+	movl -16(%rbp), %eax
+	add %rbx, %rax
+	mov %rax, %rbx
+	mov %rbp, %rdx
+	sub $16, %rdx
+	movl %ebx, (%rdx)
+.temp2:
 	leave
 	ret

@@ -207,11 +207,6 @@ static Token getString(std::istringstream& code) {
 	code.get();	// " 문자
 	while (code.peek() != '\"')
 	{
-		if (code.peek() == '\\')
-		{
-			str += getEscapeSequence(code);
-			continue;
-		}
 		str += code.get();
 	}
 	code.get();	// " 문자

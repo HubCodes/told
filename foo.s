@@ -2,9 +2,9 @@
 
 .section .data
 .temp1:
-	.asciz "Hello, world!  "
+	.asciz "Hello, world!\n"
 .temp2:
-	.asciz "Good night! "
+	.asciz "./code.txt"
 .section .text
 .global foo
 foo:
@@ -18,49 +18,78 @@ foo:
 main:
 	push %rbp
 	mov %rsp, %rbp
-	sub $32, %rsp
+	sub $40, %rsp
 	movabs $.temp1, %rax
 	mov %rax, -8(%rbp)
-	movabs $.temp2, %rax
+	movabsq $balloc, %rax
+	mov %rax, %rbx
+	mov $1, %rax
+	push %rax
+	call *%rbx
+	add $16, %rsp
 	mov %rax, -16(%rbp)
-	mov $10, %rax
-	movl %eax, -24(%rbp)
+	movabsq $foo, %rax
+	mov %rax, -24(%rbp)
 	mov $10, %rax
 	movl %eax, -32(%rbp)
-	mov $10, %rax
+	movabsq $opend, %rax
+	mov %rax, %rbx
+	mov $493, %rax
+	push %rax
+	mov $0, %rax
+	push %rax
+	movabs $.temp2, %rax
+	push %rax
+	call *%rbx
+	add $32, %rsp
+	movl %eax, -40(%rbp)
+	movabsq $readd, %rax
+	mov %rax, %rbx
+	mov $500, %rax
+	push %rax
+	mov %rbp, %rax
+	sub $16, %rax
+	mov (%rax), %rax
+	push %rax
+	movl -40(%rbp), %eax
+	cltq
+	push %rax
+	call *%rbx
+	add $32, %rsp
+	movabsq $putstr, %rax
+	mov %rax, %rbx
+	mov $500, %rax
+	push %rax
+	mov %rbp, %rax
+	sub $16, %rax
+	mov (%rax), %rax
+	push %rax
+	call *%rbx
+	add $24, %rsp
+	movabsq $closed, %rax
+	mov %rax, %rbx
+	movl -40(%rbp), %eax
+	cltq
+	push %rax
+	call *%rbx
+	add $16, %rsp
+	movabsq $bfree, %rax
+	mov %rax, %rbx
+	mov $1, %rax
+	push %rax
+	mov %rbp, %rax
+	sub $16, %rax
+	mov (%rax), %rax
+	push %rax
+	call *%rbx
+	add $24, %rsp
+	mov $66, %rax
 	mov %rax, %rbx
 	mov %rbp, %rax
 	sub $8, %rax
 	mov (%rax), %rax
 	mov %rax, %rcx
-	mov $13, %rax
-	add %rax, %rcx
-	movb %bl, (%rcx)
 	mov $0, %rax
-	mov %rax, %rbx
-	mov %rbp, %rax
-	sub $8, %rax
-	mov (%rax), %rax
-	mov %rax, %rcx
-	mov $14, %rax
-	add %rax, %rcx
-	movb %bl, (%rcx)
-	mov $10, %rax
-	mov %rax, %rbx
-	mov %rbp, %rax
-	sub $16, %rax
-	mov (%rax), %rax
-	mov %rax, %rcx
-	mov $10, %rax
-	add %rax, %rcx
-	movb %bl, (%rcx)
-	mov $0, %rax
-	mov %rax, %rbx
-	mov %rbp, %rax
-	sub $16, %rax
-	mov (%rax), %rax
-	mov %rax, %rcx
-	mov $11, %rax
 	add %rax, %rcx
 	movb %bl, (%rcx)
 .temp3:
@@ -79,16 +108,16 @@ main:
 	add $24, %rsp
 	mov $1, %rax
 	mov %rax, %rbx
-	movl -24(%rbp), %eax
+	movl -32(%rbp), %eax
 	cltq
 	sub %rbx, %rax
 	mov %rax, %rbx
 	mov %rbp, %rdx
-	sub $24, %rdx
+	sub $32, %rdx
 	movl %ebx, (%rdx)
 	mov $0, %rax
 	mov %rax, %rbx
-	movl -24(%rbp), %eax
+	movl -32(%rbp), %eax
 	cltq
 	cmp %rbx, %rax
 	setl %al
@@ -97,22 +126,18 @@ main:
 	jne .temp4
 	jmp .temp3
 .temp4:
-	movabsq $putstr, %rax
-	mov %rax, %rbx
-	mov $12, %rax
-	push %rax
 	mov %rbp, %rax
-	sub $16, %rax
+	sub $24, %rax
 	mov (%rax), %rax
-	push %rax
+	mov %rax, %rbx
 	call *%rbx
-	add $24, %rsp
+	add $8, %rsp
 	mov %rax, %rbx
 	mov $1, %rax
 	add %rbx, %rax
 	mov %rax, %rbx
 	mov %rbp, %rdx
-	sub $24, %rdx
+	sub $32, %rdx
 	movl %ebx, (%rdx)
 	mov $65, %rax
 	mov %rax, %rbx
@@ -139,16 +164,16 @@ main:
 	add $24, %rsp
 	mov $1, %rax
 	mov %rax, %rbx
-	movl -24(%rbp), %eax
+	movl -32(%rbp), %eax
 	cltq
 	sub %rbx, %rax
 	mov %rax, %rbx
 	mov %rbp, %rdx
-	sub $24, %rdx
+	sub $32, %rdx
 	movl %ebx, (%rdx)
 	mov $0, %rax
 	mov %rax, %rbx
-	movl -24(%rbp), %eax
+	movl -32(%rbp), %eax
 	cltq
 	cmp %rbx, %rax
 	setl %al

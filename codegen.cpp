@@ -782,6 +782,9 @@ bool NumberAST::isIntegral() {
 
 bool VariableAST::isIntegral() {
 	auto&& func = manager.getNowFunction();
+	if (manager.isFunction(id)) {
+		return true;
+	}
 	if (!func.empty()) {
 		return manager.isVarIntegral(id, true, func);
 	} else {
@@ -805,7 +808,11 @@ bool UnaryExprAST::isIntegral() {
 
 bool CallExprAST::isIntegral() {
 	if (VariableAST* casted = dynamic_cast<VariableAST*>(func)) {
-		Type t = manager.getTypeObject(casted->getId());
+		Type t;
+		if (!manager.getNowFunction().empty()) 
+			t = manager.getTypeObject(casted->getId(), true, manager.getNowFunction());
+		else
+			t = manager.getTypeObject(casted->getId());
 		return t.returnType->kind != TypeKind::DOUBLE;
 	}
 	// 모르는 함수는 일단 int를 반환하는 것으로 간주
@@ -906,6 +913,11 @@ Type CodeManager::getTypeObject(const std::string& varId, bool isLocal, const st
 					return std::get<2>(local[i]);	
 				}
 			}
+			if (globalVars.find(varId) != globalVars.end()) {
+				return globalVars[funcId];
+			} else if (functions.find(varId) != functions.end()) {
+				return functions[varId];
+			}
 			std::cerr << "Cannot found variable " << varId << " on function " << funcId << '\n';
 			std::exit(EXIT_FAILURE);
 		} else {
@@ -918,7 +930,7 @@ Type CodeManager::getTypeObject(const std::string& varId, bool isLocal, const st
 		} else if (functions.find(varId) != functions.end()) {
 			return functions[varId];
 		} else {
-			std::cerr << "Cannot found variable on global namespace :" << varId << '\n';
+			std::cerr << "Cannot found variable on global namespace : " << varId << '\n';
 			std::exit(EXIT_FAILURE);
 		}
 	}

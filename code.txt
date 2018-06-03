@@ -1,29 +1,28 @@
 use fio;
+use memory;
 
 def foo(): int {
 	return 9;
 }
 
 def main(): int {
-	var buf: *char = "Hello, world!  ";
-	var buf2: *char = "Good night! ";
+	var buf: *char = "Hello, world!\n";
+	var file: *char = balloc(1);
+	var funcptr: func( :int) = foo;
 	var i: int = 10;
-	var j: int = 10;
-
-	buf[13] = 10;
-	buf[14] = 0;
-
-	buf2[10] = 10;
-	buf2[11] = 0;
-
+	var fd: int = opend("./code.txt", 0, 493);
+	readd(fd, file, 500);
+	putstr(file, 500);
+	closed(fd);
+	bfree(file, 1);
+	buf[0] = 'B';
 	for (1) {
 		putstr(buf, 14);
 		i = i - 1;
 		break (i < 0);
 	}
-	i = 1 + putstr(buf2, 12); 
+	i = 1 + funcptr();
 	buf[0] = 65;
-
 	for (1) {
 		putstr(buf, 14);
 		i = i - 1;

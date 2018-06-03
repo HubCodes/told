@@ -1,4 +1,3 @@
-#include <cstdint>
 #include <iostream>
 #include <string>
 #include <stack>
@@ -459,7 +458,7 @@ void FunctionDefAST::codegen() {
 	PRINT(DEL);
 #else
 	auto&& id = prototype->getId();
-	manager.insertFunction(id);
+	manager.insertFunction(id, prototype->getType());
 	manager.setNowFunction(id);
 	manager.push(CodeManager::TEXT, ".global " + id); 
 	manager.push(CodeManager::TEXT, id + ":");
@@ -806,7 +805,8 @@ bool UnaryExprAST::isIntegral() {
 
 bool CallExprAST::isIntegral() {
 	if (VariableAST* casted = dynamic_cast<VariableAST*>(func)) {
-		return casted->isIntegral();	
+		Type t = manager.getTypeObject(casted->getId());
+		return t.returnType->kind != TypeKind::DOUBLE;
 	}
 	// 모르는 함수는 일단 int를 반환하는 것으로 간주
 	return true;
@@ -915,6 +915,8 @@ Type CodeManager::getTypeObject(const std::string& varId, bool isLocal, const st
 	} else {
 		if (globalVars.find(varId) != globalVars.end()) {
 			return globalVars[funcId];
+		} else if (functions.find(varId) != functions.end()) {
+			return functions[varId];
 		} else {
 			std::cerr << "Cannot found variable on global namespace :" << varId << '\n';
 			std::exit(EXIT_FAILURE);
@@ -931,8 +933,8 @@ bool CodeManager::isVarIntegral(const std::string& varId, bool isLocal, const st
 	return tc != TypeCode::DOUBLE;
 }
 
-void CodeManager::insertFunction(const std::string& funcId) {
-	functions.insert(funcId);
+void CodeManager::insertFunction(const std::string& funcId, Type t) {
+	functions[funcId] = t;
 }
 
 bool CodeManager::isFunction(const std::string& funcId) {

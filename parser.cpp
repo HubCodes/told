@@ -110,9 +110,9 @@ std::vector<AST*> parse(std::istringstream& code) {
 static void use(const std::string& module) {
 	CodeManager& m = CodeManager::get();
 	Stdlib& s = Stdlib::get();
-	const std::vector<std::string>& vec = s.getFuncs(module);
-	std::for_each(vec.begin(), vec.end(), [&m](const std::string& funcId) {
-		m.insertFunction(funcId);
+	const std::vector<std::pair<std::string, Type>>& vec = s.getFuncs(module);
+	std::for_each(vec.begin(), vec.end(), [&m](const std::pair<std::string, Type>& funcId) {
+		m.insertFunction(funcId.first, funcId.second);
 	});
 }
 
@@ -462,6 +462,9 @@ static ExprAST* getCallDeref(std::istringstream& code) {
 	// 함수 호출
 	if (t.tokenKind == TokenKind::OPEN_PAREN) {
 		Token next = getNext(code);
+		if (next.tokenKind == TokenKind::CLOSE_PAREN) {
+			return new CallExprAST(callee, std::vector<ExprAST*>());
+		}
 		std::vector<ExprAST*> args;
 		unget(code);
 		while (true) {

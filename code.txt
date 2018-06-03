@@ -1,5 +1,9 @@
 use fio;
 
+def foo(): int {
+	return 9;
+}
+
 def main(): int {
 	var buf: *char = "Hello, world!  ";
 	var buf2: *char = "Good night! ";
@@ -17,4 +21,13 @@ def main(): int {
 		i = i - 1;
 		break (i < 0);
 	}
+	i = 1 + putstr(buf2, 12); 
+	buf[0] = 65;
+
+	for (1) {
+		putstr(buf, 14);
+		i = i - 1;
+		break (i < 0);
+	}
+
 }

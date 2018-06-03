@@ -1,5 +1,6 @@
 #pragma once
 
+#include <algorithm>
 #include <tuple>
 #include <vector>
 #include <unordered_map>
@@ -64,6 +65,15 @@ static TypeCode fromType(Type ty) {
 	}
 }
 
+static Type genFuncType(Type returnType, std::initializer_list<Type> argsType) {
+	Type t;
+	t.kind = TypeKind::FUNC;
+	t.ptrDepth = 1;
+	t.returnType = new Type(returnType);
+	t.argsType = argsType;
+	return t;
+}
+
 class CodeManager {
 public:
 	enum Section {
@@ -112,7 +122,7 @@ public:
 
 	bool isVarIntegral(const std::string& varId, bool isLocal = false, const std::string& funcId = "");
 
-	void insertFunction(const std::string& funcId) ;
+	void insertFunction(const std::string& funcId, Type t) ;
 
 	bool isFunction(const std::string& funcId) ;
 
@@ -129,7 +139,7 @@ private:
 	std::unordered_map<std::string, std::vector<std::tuple<std::string, int, Type>>> localVars;
 	std::unordered_map<std::string, Type> globalVars;
 	std::unordered_map<std::string, int> nowOffset;
-	std::unordered_set<std::string> functions;
+	std::unordered_map<std::string, Type> functions;
 };
 
 static CodeManager& manager = CodeManager::get();
@@ -143,7 +153,7 @@ public:
 		static Stdlib lib;
 		return lib;
 	}
-	const std::vector<std::string>& getFuncs(const std::string& module) {
+	const std::vector<std::pair<std::string, Type>>& getFuncs(const std::string& module) {
 		if (libs.find(module) == libs.end()) {
 			std::cerr << "Cannot found module " << module << '\n';
 			std::exit(EXIT_FAILURE);
@@ -152,16 +162,14 @@ public:
 	}
 private:
 	Stdlib() : libs() {
-		libs["fio"].push_back("opend");
-		libs["fio"].push_back("closed");
-		libs["fio"].push_back("readd");
-		libs["fio"].push_back("writed");
-		libs["fio"].push_back("getstr");
-		libs["fio"].push_back("putstr");
-		libs["fio"].push_back("putlinefd");
-		libs["fio"].push_back("getlinefd");
+		libs["fio"].push_back({ "opend", genFuncType	({ TypeKind::INT, .ptrDepth=0 }, { { TypeKind::CHAR, .ptrDepth=1 }, { TypeKind::INT, .ptrDepth=0 }, { TypeKind::INT, .ptrDepth=0 } }) });
+		libs["fio"].push_back({ "closed", genFuncType	({ TypeKind::INT, .ptrDepth=0 }, { { TypeKind::INT, .ptrDepth=0 } }) });
+		libs["fio"].push_back({ "readd", genFuncType	({ TypeKind::INT, .ptrDepth=0 }, { { TypeKind::INT, .ptrDepth=0 }, { TypeKind::CHAR, .ptrDepth=1 }, { TypeKind::INT, .ptrDepth=0 } }) });
+		libs["fio"].push_back({ "writed", genFuncType	({ TypeKind::INT, .ptrDepth=0 }, { { TypeKind::INT, .ptrDepth=0 }, { TypeKind::CHAR, .ptrDepth=1 }, { TypeKind::INT, .ptrDepth=0 } }) });
+		libs["fio"].push_back({ "getstr", genFuncType	({ TypeKind::INT, .ptrDepth=0 }, { { TypeKind::CHAR, .ptrDepth=1 }, { TypeKind::INT, .ptrDepth=0 } }) });
+		libs["fio"].push_back({ "putstr", genFuncType	({ TypeKind::INT, .ptrDepth=0 }, { { TypeKind::CHAR, .ptrDepth=1 }, { TypeKind::INT, .ptrDepth=0 } }) });
 	}
-	std::unordered_map<std::string, std::vector<std::string>> libs;
+	std::unordered_map<std::string, std::vector<std::pair<std::string, Type>>> libs;
 };
 
 class AST {
@@ -289,6 +297,18 @@ public:
 		Type second = std::get<1>(argsType[index]);
 		index++;
 		return std::make_pair(first, second);
+	}
+	Type getType() const {
+		Type t;
+		t.kind = TypeKind::FUNC;
+		t.ptrDepth = 1;
+		t.returnType = new Type(returnType);
+		std::vector<Type> argsTypeIn;
+		std::for_each(argsType.begin(), argsType.end(), [&argsTypeIn](const std::tuple<std::string, Type>& type) {
+			argsTypeIn.push_back(std::get<1>(type));
+		});
+		t.argsType = std::move(argsTypeIn);
+		return t;
 	}
 private:
 	std::string id;

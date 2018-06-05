@@ -10,7 +10,9 @@
 foo:
 	push %rbp
 	mov %rsp, %rbp
-	sub $0, %rsp
+	sub $8, %rsp
+	mov 16(%rbp), %rax
+	mov %rax, -8(%rbp)
 	mov $9, %rax
 	leave
 	ret
@@ -130,8 +132,10 @@ main:
 	sub $24, %rax
 	mov (%rax), %rax
 	mov %rax, %rbx
+	mov $4, %rax
+	push %rax
 	call *%rbx
-	add $8, %rsp
+	add $16, %rsp
 	mov %rax, %rbx
 	mov $1, %rax
 	add %rbx, %rax

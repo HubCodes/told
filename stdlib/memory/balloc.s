@@ -1,4 +1,4 @@
-// func balloc(int factor): char*
+// func balloc(factor: int): *char
 // balloc provides anonymous memory mapping by sys_mmap (512 * factor byte)
 // balloc recommends big size allocation
 

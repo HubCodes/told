@@ -574,7 +574,11 @@ static Type getType(std::istringstream& code) {
 		maybe(code, TokenKind::OPEN_PAREN);
 		Token lookahead = getNext(code);
 		while (lookahead.tokenKind != TokenKind::COLON) {
+			unget(code);
 			result.argsType.push_back(getType(code));
+			lookahead = getNext(code);
+			if (lookahead.tokenKind == TokenKind::COMMA)
+				lookahead = getNext(code);
 		}
 		result.returnType = new Type(getType(code));	
 		maybe(code, TokenKind::CLOSE_PAREN);

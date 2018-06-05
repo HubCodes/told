@@ -1,14 +1,14 @@
 use fio;
 use memory;
 
-def foo(): int {
+def foo(a: int): int {
 	return 9;
 }
 
 def main(): int {
 	var buf: *char = "Hello, world!\n";
 	var file: *char = balloc(1);
-	var funcptr: func( :int) = foo;
+	var funcptr: func(int:int) = foo;
 	var i: int = 10;
 	var fd: int = opend("./code.txt", 0, 493);
 	readd(fd, file, 500);
@@ -21,7 +21,7 @@ def main(): int {
 		i = i - 1;
 		break (i < 0);
 	}
-	i = 1 + funcptr();
+	i = 1 + funcptr(4);
 	buf[0] = 65;
 	for (1) {
 		putstr(buf, 14);

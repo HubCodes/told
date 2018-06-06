@@ -1,12 +1,16 @@
-CC = clang++
-STD = c++14
+CC=clang++
+STD_FLAG=-std=c++14
 
-debug: *.cpp *.hpp
-	$(CC) -g -DDEBUG_R -std=$(STD) *.cpp -o debug
+OUTPUT_PATH=./bin
+SRCS=./src/told/*.cpp
+HDRS=./src/told/*.hpp
 
-told: *.cpp *.hpp
-	$(CC) -std=$(STD) *.cpp -o told
+debug: $(SRCS) $(HDRS)
+	$(CC) -g -DDEBUG_R $(STD_FLAG) $(SRCS) -o $(OUTPUT_PATH)/debug
+
+told: $(SRCS) $(HDRS)
+	$(CC) $(STD_FLAG) $(SRCS) -o $(OUTPUT_PATH)/told
 
 clean:
-	rm told
-	rm debug
+	rm $(OUTPUT_PATH)/told
+	rm $(OUTPUT_PATH)/debug

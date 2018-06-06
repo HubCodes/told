@@ -1,0 +1,30 @@
+use fio;
+use string;
+
+def bubble_sort(arr: *char, len: int): int {
+	var i: int = 0;
+	var j: int = 0;
+	var tmp: char = 0;
+	for (i < len - 1) {
+		for (j < len - 1 - i) {
+			if (arr[j] < arr[j+1]) {
+				tmp = arr[j];
+				arr[j] = arr[j+1];
+				arr[j+1] = tmp;
+			}
+			j = j + 1;
+		}
+		j = 0;
+		i = i + 1;
+	}
+	return len;
+}
+
+def main(): int {
+	var a: *char = "Hello, world!";
+	var len: int = strsize(a);
+	putstr(a, len);
+	bubble_sort(a, len); 
+	putstr(a, len);
+	putc('\n');
+}

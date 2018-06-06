@@ -25,6 +25,12 @@ static std::string indent;
 
 #define D(x) static_cast<int>(x)
 
+#ifdef DEBUG_R
+#define l(x) manager.push(CodeManager::TEXT, std::string("#   ") + x)
+#else
+#define l(x)
+#endif
+
 static void error(const char* msg) {
 	std::cerr << msg << '\n';
 	std::exit(EXIT_FAILURE);
@@ -67,6 +73,7 @@ void NumberAST::codegen() {
 			"int data: " + std::to_string(numericData.i) : "double data: " + std::to_string(numericData.d));
 	PRINT(DEL);
 #else
+	l("NumberAST::codegen");	
 	if (kind == LiteralKind::DOUBLE) {
 		uint64_t casted = *((uint64_t*)&(numericData.d));
 		manager.getNextLabel();
@@ -81,6 +88,7 @@ void NumberAST::codegen() {
 }
 
 void loadVar(VariableAST* var) {
+	l("loadVar");	
 	const std::string& id = var->getId();
 	const std::string& funcId = manager.getNowFunction();
 	if (funcId.empty()) {
@@ -132,7 +140,8 @@ void VariableAST::codegen() {
 	PRINT("VariableAST");
 	PRINT(id);
 	PRINT(DEL);
-#else
+#else	
+	l("VariableAST::codegen");	
 	if (manager.isFunction(id)) {
 		manager.push(CodeManager::TEXT, "movabsq $" + id + ", %rax", true);	
 		return;
@@ -153,6 +162,7 @@ void StringAST::codegen() {
 	PRINT(str);
 	PRINT(DEL);
 #else
+	l("StringAST::codegen");	
 	manager.getNextLabel();
 	manager.push(CodeManager::DATA, manager.getLabel() + ":");
 	manager.push(CodeManager::DATA, ".asciz \"" + str + "\"", true);
@@ -160,51 +170,58 @@ void StringAST::codegen() {
 #endif
 }
 
-// 전제 : 좌측 피연산자는 rax(xmm0), 우측 피연산자는 rbx(xmm1)
+// 전제 : 좌측 피연산자는 rbx(xmm1), 우측 피연산자는 rax(xmm0)
 void pushBinopExpr(OpKind op, bool isDouble) {
+	l("pushBinopExpr");	
+	manager.push(CodeManager::TEXT, "pop %rbx", true);
 	switch (op) {
 		case OpKind::ADD:
-			manager.push(CodeManager::TEXT, "add %rbx, %rax", true);	
+			manager.push(CodeManager::TEXT, "add %rax, %rbx", true);	
 			break;
 		case OpKind::SUB:
-			manager.push(CodeManager::TEXT, "sub %rbx, %rax", true);
+			manager.push(CodeManager::TEXT, "sub %rax, %rbx", true);
 			break;
 		case OpKind::MUL:
-			manager.push(CodeManager::TEXT, "imul %rbx, %rax", true);
+			manager.push(CodeManager::TEXT, "imul %rax, %rbx", true);
 			break;
 		case OpKind::DIV:
 		case OpKind::MOD:
+			manager.push(CodeManager::TEXT, "mov %rax, %rcx", true);
+			manager.push(CodeManager::TEXT, "mov %rbx, %rax", true);
+			manager.push(CodeManager::TEXT, "mov %rcx, %rbx", true);
 			manager.push(CodeManager::TEXT, "cqto", true);
 			manager.push(CodeManager::TEXT, "idiv %rbx", true);
 			if (op == OpKind::MOD) {
-				manager.push(CodeManager::TEXT, "mov %rdx, %rax", true);
+				manager.push(CodeManager::TEXT, "mov %rdx, %rbx", true);
+			} else {
+				manager.push(CodeManager::TEXT, "mov %rax, %rbx", true);
 			}
 			break;
 		case OpKind::LT:
 		case OpKind::GT:
 		case OpKind::EQ:
 		case OpKind::NEQ:
-			manager.push(CodeManager::TEXT, "cmp %rbx, %rax", true);
+			manager.push(CodeManager::TEXT, "cmp %rax, %rbx", true);
 			manager.push(CodeManager::TEXT, std::string("set") + (
 						(op == OpKind::LT) ? 
 						"l" : (op == OpKind::GT) ?
 						"g" : (op == OpKind::EQ) ?
-						"e" : "ne") + " %al", true);
-			manager.push(CodeManager::TEXT, "movzbq %al, %rax", true);
+						"e" : "ne") + " %bl", true);
+			manager.push(CodeManager::TEXT, "movzbq %bl, %rbx", true);
 			break;
 		case OpKind::AND: {
 			manager.getNextLabel();
 			std::string label1 = manager.getLabel();
 			manager.getNextLabel();
 			std::string end = manager.getLabel();
-			manager.push(CodeManager::TEXT, "cmp $0, %rax", true);
+			manager.push(CodeManager::TEXT, "cmp $0, %rbx", true);
 			manager.push(CodeManager::TEXT, "je " + label1, true);
-			manager.push(CodeManager::TEXT, "cmp $0, %rbx", true);	
+			manager.push(CodeManager::TEXT, "cmp $0, %rax", true);	
 			manager.push(CodeManager::TEXT, "je " + label1, true);
-			manager.push(CodeManager::TEXT, "mov $1, %rax", true);
+			manager.push(CodeManager::TEXT, "mov $1, %rbx", true);
 			manager.push(CodeManager::TEXT, "jmp " + end, true);
 			manager.push(CodeManager::TEXT, label1 + ":");
-			manager.push(CodeManager::TEXT, "mov $0, %rax", true);
+			manager.push(CodeManager::TEXT, "mov $0, %rbx", true);
 			manager.push(CodeManager::TEXT, end + ":");
 			break;
 		}
@@ -213,21 +230,23 @@ void pushBinopExpr(OpKind op, bool isDouble) {
 			std::string truee = manager.getLabel();
 			manager.getNextLabel();
 			std::string end = manager.getLabel();
-			manager.push(CodeManager::TEXT, "test %rax, %rax", true);
-			manager.push(CodeManager::TEXT, "jz " + truee, true);
 			manager.push(CodeManager::TEXT, "test %rbx, %rbx", true);
 			manager.push(CodeManager::TEXT, "jz " + truee, true);
-			manager.push(CodeManager::TEXT, "mov $0, %rax", true);
+			manager.push(CodeManager::TEXT, "test %rax, %rax", true);
+			manager.push(CodeManager::TEXT, "jz " + truee, true);
+			manager.push(CodeManager::TEXT, "mov $0, %rbx", true);
 			manager.push(CodeManager::TEXT, "jmp " + end, true);
 			manager.push(CodeManager::TEXT, truee + ":");
-			manager.push(CodeManager::TEXT, "mov $1, %rax", true);
+			manager.push(CodeManager::TEXT, "mov $1, %rbx", true);
 			manager.push(CodeManager::TEXT, end + ":");	
 		}
 	}
+	manager.push(CodeManager::TEXT, "mov %rbx, %rax", true);
 }
 
 // 전제 : rbx 혹은 xmm1에 값이 들어있다.
 void pushAssignExpr(ExprAST* lhs, bool leftInt, bool rightInt) {
+	l("pushAssignExpr");	
 	VariableAST* test1 = dynamic_cast<VariableAST*>(lhs);
 	PointerDerefAST* test2 = dynamic_cast<PointerDerefAST*>(lhs);
 	std::string nowFunc = manager.getNowFunction();	
@@ -251,6 +270,12 @@ void pushAssignExpr(ExprAST* lhs, bool leftInt, bool rightInt) {
 		std::string reg = (t == TypeCode::CHAR) ?
 				"bl" : (t == TypeCode::INT) ?
 				"ebx" : "rbx";
+		if (!rightInt) {
+			manager.push(CodeManager::TEXT, "movsd (%rsp), %xmm0", true);
+			manager.push(CodeManager::TEXT, "add $8, %rsp", true);
+		} else {
+			manager.push(CodeManager::TEXT, "pop %rbx", true);
+		}
 		if (leftInt) {
 			if (!rightInt) {
 				manager.push(CodeManager::TEXT, "cvttsd2si %xmm1, %rbx", true);
@@ -267,10 +292,14 @@ void pushAssignExpr(ExprAST* lhs, bool leftInt, bool rightInt) {
 	// 포인터 역참조라면
 	else if (test2 != nullptr) {
 		test2->getPtr()->codegen();
-		manager.push(CodeManager::TEXT, "mov %rax, %rcx", true);
+		manager.push(CodeManager::TEXT, "push %rax", true);
+		// manager.push(CodeManager::TEXT, "mov %rax, %rcx", true);
 		test2->getIndex()->codegen();
-		manager.push(CodeManager::TEXT, "add %rax, %rcx", true);
-		// 현재 시점 : rbx = 대입될 값, rcx = 포인터 값(확정)
+		manager.push(CodeManager::TEXT, "mov %rax, %rcx", true);
+		manager.push(CodeManager::TEXT, "pop %rax", true);
+		manager.push(CodeManager::TEXT, "pop %rbx", true);
+		manager.push(CodeManager::TEXT, "add %rcx, %rax", true);
+		// 현재 시점 : rbx = 대입될 값, rax = 포인터 값(확정)
 		Type to = test2->getTypeObject();
 		to.ptrDepth--;
 		TypeCode t = fromType(to);
@@ -285,12 +314,12 @@ void pushAssignExpr(ExprAST* lhs, bool leftInt, bool rightInt) {
 			if (!rightInt) {
 				manager.push(CodeManager::TEXT, "cvttsd2si %xmm1, %rbx", true);
 			}
-			manager.push(CodeManager::TEXT, instr + " %" + reg + ", (%rcx)", true);
+			manager.push(CodeManager::TEXT, instr + " %" + reg + ", (%rax)", true);
 		} else {
 			if (rightInt) {
 				manager.push(CodeManager::TEXT, "cvtsi2sdl %rbx, %xmm1", true);
 			}
-			manager.push(CodeManager::TEXT, "movsd %xmm1, (%rcx)", true);
+			manager.push(CodeManager::TEXT, "movsd %xmm1, (%rax)", true);
 		}
 	} else {
 		error("Expected variable or pointer expression, but unknown");
@@ -307,36 +336,45 @@ void BinaryExprAST::codegen() {
 	POP;
 	PRINT(DEL);
 #else
+	l("BinaryExprAST::codegen");	
 	bool leftInt = lhs->isIntegral();
 	bool rightInt = rhs->isIntegral();
 	if (kind == OpKind::ASSIGN) {
 		rhs->codegen();
 		if (rhs->isIntegral()) {
-			manager.push(CodeManager::TEXT, "mov %rax, %rbx", true);
+			manager.push(CodeManager::TEXT, "push %rax", true);
+			// manager.push(CodeManager::TEXT, "mov %rax, %rbx", true);
 		} else {
-			manager.push(CodeManager::TEXT, "movapd %xmm0, %xmm1", true);
+			manager.push(CodeManager::TEXT, "sub $8, %rsp", true);
+			manager.push(CodeManager::TEXT, "vmovsd %xmm0, (%rsp)", true);
+			// manager.push(CodeManager::TEXT, "movapd %xmm0, %xmm1", true);
 		}
 		pushAssignExpr(lhs, leftInt, rightInt);
 		return;
 	}
 	// 정수 우위
 	if (leftInt && rightInt) {
-		rhs->codegen();
-		manager.push(CodeManager::TEXT, "mov %rax, %rbx", true);
 		lhs->codegen();
+		manager.push(CodeManager::TEXT, "push %rax", true);
+		// manager.push(CodeManager::TEXT, "mov %rax, %rbx", true);
+		rhs->codegen();
 	} else if (!leftInt && rightInt) {
-		rhs->codegen();
-		manager.push(CodeManager::TEXT, "cvttsd2si %xmm0, %rbx", true);
-		lhs->codegen();
-	} else if (leftInt && !rightInt) {
-		rhs->codegen();
-		manager.push(CodeManager::TEXT, "mov %rax, %rbx", true);
 		lhs->codegen();
 		manager.push(CodeManager::TEXT, "cvttsd2si %xmm0, %rax", true);
-	} else {
+		manager.push(CodeManager::TEXT, "push %rax", true);
 		rhs->codegen();
-		manager.push(CodeManager::TEXT, "movapd %xmm0, %xmm1", true);
+	} else if (leftInt && !rightInt) {
 		lhs->codegen();
+		manager.push(CodeManager::TEXT, "push %rax", true);
+		// manager.push(CodeManager::TEXT, "mov %rax, %rbx", true);
+		rhs->codegen();
+		manager.push(CodeManager::TEXT, "cvttsd2si %xmm0, %rax", true);
+	} else {
+		lhs->codegen();
+		manager.push(CodeManager::TEXT, "sub $8, %rsp", true);
+		manager.push(CodeManager::TEXT, "vmovsd %xmm0, %rsp", true);
+		// manager.push(CodeManager::TEXT, "movapd %xmm0, %xmm1", true);
+		rhs->codegen();
 	}
 	pushBinopExpr(kind, !leftInt && !rightInt);
 #endif
@@ -351,6 +389,7 @@ void UnaryExprAST::codegen() {
 	POP;
 	PRINT(DEL);
 #else
+	l("UnaryExprAST::codegen");	
 	if (kind == OpKind::NOT) {
 		operand->codegen();
 		manager.push(CodeManager::TEXT, "cmp $0, %rax", true);
@@ -385,14 +424,15 @@ void CallExprAST::codegen() {
 	POP;
 	PRINT(DEL);
 #else
+	l("CallExprAST::codegen");	
 	func->codegen();
-	manager.push(CodeManager::TEXT, "mov %rax, %rbx", true);
+	manager.push(CodeManager::TEXT, "mov %rax, %r10", true);
 	for (int i = args.size() - 1; i >= 0; --i) {
 		args[i]->codegen();
 		manager.push(CodeManager::TEXT, "push %rax", true);
 	}
-	manager.push(CodeManager::TEXT, "call *%rbx", true);
-	manager.push(CodeManager::TEXT, "add $" + std::to_string(8 * args.size() + 8) + ", %rsp", true);
+	manager.push(CodeManager::TEXT, "call *%r10", true);
+	manager.push(CodeManager::TEXT, "add $" + std::to_string(8 * args.size()) + ", %rsp", true);
 #endif
 }
 
@@ -405,15 +445,21 @@ void PointerDerefAST::codegen() {
 	POP;
 	PRINT(DEL);
 #else
-	TypeCode t = getType();
+	l("PointerDerefAST::codegen");	
+	TypeCode t; 
+	Type to = getTypeObject();
+	to.ptrDepth--;
+	t = fromType(to);
 	ptr->codegen();
-	manager.push(CodeManager::TEXT, "mov %rax, %rbx", true);
+	manager.push(CodeManager::TEXT, "push %rax", true);
+	// manager.push(CodeManager::TEXT, "mov %rax, %rbx", true);
 	index->codegen();
+	manager.push(CodeManager::TEXT, "pop %rbx", true);
 	manager.push(CodeManager::TEXT, "add %rax, %rbx", true);
 	if (t == TypeCode::CHAR) {
-		manager.push(CodeManager::TEXT, "movsbq (%rbx), %rax", true);	
+		manager.push(CodeManager::TEXT, "movzbq (%rbx), %rax", true);	
 	} else if (t == TypeCode::INT) {
-		manager.push(CodeManager::TEXT, "movl (%rbx), %rax", true);
+		manager.push(CodeManager::TEXT, "movl (%rbx), %eax", true);
 	} else if (t == TypeCode::DOUBLE) {
 		manager.push(CodeManager::TEXT, "movsd (%rbx), %xmm0", true);
 	} else {
@@ -442,6 +488,7 @@ void BlockAST::codegen() {
 	POP;
 	PRINT(DEL);
 #else
+	l("BlockAST::codegen");	
 	for (auto&& a : blockInternal) {
 		a->codegen();
 	}
@@ -457,6 +504,7 @@ void FunctionDefAST::codegen() {
 	POP;
 	PRINT(DEL);
 #else
+	l("FunctionDefAST::codegen");	
 	auto&& id = prototype->getId();
 	manager.insertFunction(id, prototype->getType());
 	manager.setNowFunction(id);
@@ -498,6 +546,7 @@ void FunctionDefAST::codegen() {
 }
 
 void pushGlobalVar(ExprAST* top) {
+	l("pushGlobalVar");	
 	enum TypeCode {
 		NUMBER,
 		STRING,
@@ -559,6 +608,7 @@ void VarDefAST::codegen() {
 	POP;
 	PRINT(DEL);
 #else
+	l("VarDefAST::codegen");	
 	auto&& nowFunc = manager.getNowFunction();
 
 	// 지역 변수일 때
@@ -590,6 +640,7 @@ void VarDefAST::codegen() {
 }
 
 void pushArrayString(const std::vector<ExprAST*>& inits) {
+	l("pushArrayString");	
 	std::vector<std::string> labels;
 	for (auto&& a : inits) {
 		StringAST* str = dynamic_cast<StringAST*>(a);
@@ -616,6 +667,7 @@ void ArrayAST::codegen() {
 	POP;
 	PRINT(DEL);
 #else
+	l("ArrayAST::codegen");	
 	TypeCode t = fromType(getType());
 	std::string datastr;
 	if (t == TypeCode::CHAR) {
@@ -665,6 +717,7 @@ void IfAST::codegen() {
 	POP;
 	PRINT(DEL);
 #else
+	l("IfAST::codegen");	
 	if (cond) {
 		manager.getNextLabel();
 		std::string elseLabel = manager.getLabel();
@@ -695,6 +748,7 @@ void ForAST::codegen() {
 	POP;
 	PRINT(DEL);
 #else
+	l("ForAST::codegen");	
 	manager.getNextLabel();
 	std::string begin = manager.getLabel();
 	manager.getNextLabel();
@@ -721,6 +775,7 @@ void BreakAST::codegen() {
 	POP;
 	PRINT(DEL);
 #else
+	l("BreakAST::codegen");	
 	if (!forFlow.empty()) {
 		auto&& pair = forFlow.top();	
 		if (cond) {
@@ -746,6 +801,7 @@ void ContinueAST::codegen() {
 	POP;
 	PRINT(DEL);
 #else
+	l("ContinueAST::codegen");	
 	if (!forFlow.empty()) {
 		auto&& pair = forFlow.top();
 		if (cond) {
@@ -770,6 +826,7 @@ void ReturnAST::codegen() {
 	POP;
 	PRINT(DEL);
 #else
+	l("BreakAST::codegen");	
 	ret->codegen();
 	manager.push(CodeManager::TEXT, "leave", true);
 	manager.push(CodeManager::TEXT, "ret", true);

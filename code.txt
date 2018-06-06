@@ -1,32 +1,30 @@
 use fio;
-use memory;
+use string;
 
-def foo(a: int): int {
-	return 9;
+def bubble_sort(arr: *char, len: int): int {
+	var i: int = 0;
+	var j: int = 0;
+	var tmp: char = 0;
+	for (i < len - 1) {
+		for (j < len - 1 - i) {
+			if (arr[j] < arr[j+1]) {
+				tmp = arr[j];
+				arr[j] = arr[j+1];
+				arr[j+1] = tmp;
+			}
+			j = j + 1;
+		}
+		j = 0;
+		i = i + 1;
+	}
+	return len;
 }
 
 def main(): int {
-	var buf: *char = "Hello, world!\n";
-	var file: *char = balloc(1);
-	var funcptr: func(int:int) = foo;
-	var i: int = 10;
-	var fd: int = opend("./code.txt", 0, 493);
-	readd(fd, file, 500);
-	putstr(file, 500);
-	closed(fd);
-	bfree(file, 1);
-	buf[0] = 'B';
-	for (1) {
-		putstr(buf, 14);
-		i = i - 1;
-		break (i < 0);
-	}
-	i = 1 + funcptr(4);
-	buf[0] = 65;
-	for (1) {
-		putstr(buf, 14);
-		i = i - 1;
-		break (i < 0);
-	}
-
+	var a: *char = "Hello, world!";
+	var len: int = strsize(a);
+	putstr(a, len);
+	bubble_sort(a, len); 
+	putstr(a, len);
+	putc('\n');
 }

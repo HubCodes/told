@@ -1,10 +1,10 @@
 CC = clang++
 STD = c++14
 
-debug:
-	$(CC) -g -std=$(STD) *.cpp -o debug
+debug: *.cpp *.hpp
+	$(CC) -g -DDEBUG_R -std=$(STD) *.cpp -o debug
 
-told:
+told: *.cpp *.hpp
 	$(CC) -std=$(STD) *.cpp -o told
 
 clean:

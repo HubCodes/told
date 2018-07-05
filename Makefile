@@ -6,7 +6,7 @@ SRCS=./src/told/*.cpp
 HDRS=./src/told/*.hpp
 
 debug: $(SRCS) $(HDRS)
-	$(CC) -g -DDEBUG_R $(STD_FLAG) $(SRCS) -o $(OUTPUT_PATH)/debug
+	$(CC) -g -DDEBUG_R $(STD_FLAG) $(SRCS) -v -o $(OUTPUT_PATH)/debug
 
 told: $(SRCS) $(HDRS)
 	$(CC) $(STD_FLAG) $(SRCS) -o $(OUTPUT_PATH)/told

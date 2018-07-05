@@ -1,12 +1,7 @@
-#pragma once
+#ifndef __PARSER_HEADER__
+#define __PARSER_HEADER__
 
-#include <algorithm>
-#include <tuple>
-#include <vector>
-#include <unordered_map>
-#include <unordered_set>
-#include <iostream>
-
+#include "includes.hpp"
 #include "lexer.hpp"
 
 union NumericData {
@@ -20,7 +15,7 @@ struct Type {
 
 	/* func() 타입을 위함 */
 	Type* returnType;
-	std::vector<Type> argsType;
+	vector<Type> argsType;
 
 	int ptrDepth; // func kind를 가지고 있다면 1과 같거나 더 크다.
 };
@@ -36,7 +31,7 @@ enum class TypeCode {
 
 #define D(x) static_cast<int>(x)
 
-static std::unordered_map<int, std::string> opMap = {
+static unordered_map<int, string> opMap = {
 	{ D(OpKind::ADD), "+" },
 	{ D(OpKind::SUB), "-" },
 	{ D(OpKind::MUL), "*" },
@@ -62,6 +57,8 @@ static TypeCode fromType(Type ty) {
 		return TypeCode::INT;
 	} else if (ty.kind == TypeKind::DOUBLE) {
 		return TypeCode::DOUBLE;
+	} else {
+		return TypeCode::INT;
 	}
 }
 
@@ -96,50 +93,50 @@ public:
 
 	void getNextLabel();
 	
-	std::string getLabel();
+	string getLabel();
 
-	void push(Section section, std::string code, bool isIndent = false);
+	void push(Section section, string code, bool isIndent = false);
 
-	void setNowFunction(const std::string& id);
+	void setNowFunction(const string& id);
 
 	void setNowFunction();
 
-	const std::string& getNowFunction();
+	const string& getNowFunction();
 
-	void insertGlobalVar(const std::string& id, Type ty);
+	void insertGlobalVar(const string& id, Type ty);
 
-	bool isGlobalVar(const std::string& id);
+	bool isGlobalVar(const string& id);
 
-	bool isLocalVar(const std::string& funcId, const std::string& varId);
+	bool isLocalVar(const string& funcId, const string& varId);
 
-	void insertLocalVar(const std::string& funcId, const std::string& varId, Type ty);
+	void insertLocalVar(const string& funcId, const string& varId, Type ty);
 
-	int getLocalVarOffset(const std::string& funcId, const std::string& varId);
+	int getLocalVarOffset(const string& funcId, const string& varId);
 
-	Type getTypeObject(const std::string& varId, bool isLocal = false, const std::string& funcId = "");
+	Type getTypeObject(const string& varId, bool isLocal = false, const string& funcId = "");
 
-	TypeCode getTypeCode(const std::string& varId, bool isLocal = false, const std::string& funcId = "");
+	TypeCode getTypeCode(const string& varId, bool isLocal = false, const string& funcId = "");
 
-	bool isVarIntegral(const std::string& varId, bool isLocal = false, const std::string& funcId = "");
+	bool isVarIntegral(const string& varId, bool isLocal = false, const string& funcId = "");
 
-	void insertFunction(const std::string& funcId, Type t) ;
+	void insertFunction(const string& funcId, Type t) ;
 
-	bool isFunction(const std::string& funcId) ;
+	bool isFunction(const string& funcId) ;
 
-	const std::vector<std::string>& getDataSeg();
+	const vector<string>& getDataSeg();
 	
-	const std::vector<std::string>& getTextSeg();
+	const vector<string>& getTextSeg();
 
 private:
 	CodeManager() : data(), text(), label(".temp0"), nowFunction(), localVars(), globalVars(), nowOffset(), functions() { }
-	std::vector<std::string> data;
-	std::vector<std::string> text;
-	std::string label;
-	std::string nowFunction;
-	std::unordered_map<std::string, std::vector<std::tuple<std::string, int, Type>>> localVars;
-	std::unordered_map<std::string, Type> globalVars;
-	std::unordered_map<std::string, int> nowOffset;
-	std::unordered_map<std::string, Type> functions;
+	vector<string> data;
+	vector<string> text;
+	string label;
+	string nowFunction;
+	unordered_map<string, vector<std::tuple<string, int, Type>>> localVars;
+	unordered_map<string, Type> globalVars;
+	unordered_map<string, int> nowOffset;
+	unordered_map<string, Type> functions;
 };
 
 static CodeManager& manager = CodeManager::get();
@@ -153,7 +150,7 @@ public:
 		static Stdlib lib;
 		return lib;
 	}
-	const std::vector<std::pair<std::string, Type>>& getFuncs(const std::string& module) {
+	const vector<std::pair<string, Type>>& getFuncs(const string& module) {
 		if (libs.find(module) == libs.end()) {
 			std::cerr << "Cannot found module " << module << '\n';
 			std::exit(EXIT_FAILURE);
@@ -175,7 +172,7 @@ private:
 
 		libs["string"].push_back({ "strsize", genFuncType({ TypeKind::CHAR, .ptrDepth=1 }, { { TypeKind::INT, .ptrDepth=0 } }) });
 	}
-	std::unordered_map<std::string, std::vector<std::pair<std::string, Type>>> libs;
+	unordered_map<string, vector<std::pair<string, Type>>> libs;
 };
 
 class AST {
@@ -204,22 +201,22 @@ private:
 
 class VariableAST : public ExprAST {
 public:
-	VariableAST(const std::string& id) : id(id) { }
+	VariableAST(const string& id) : id(id) { }
 	virtual void codegen();
 	virtual bool isIntegral();
-	const std::string& getId() const noexcept { return id; }
+	const string& getId() const noexcept { return id; }
 private:
-	std::string id;
+	string id;
 };
 
 class StringAST : public ExprAST {
 public:
-	StringAST(const std::string& str) : str(str) { }
+	StringAST(const string& str) : str(str) { }
 	virtual void codegen();
 	virtual bool isIntegral();
-	const std::string& getStr() const noexcept { return str; }
+	const string& getStr() const noexcept { return str; }
 private:
-	std::string str;
+	string str;
 };
 
 class BinaryExprAST : public ExprAST {
@@ -245,12 +242,12 @@ private:
 
 class CallExprAST : public ExprAST {
 public:
-	CallExprAST(ExprAST* func, const std::vector<ExprAST*>& args) : func(func), args(args) { }
+	CallExprAST(ExprAST* func, const vector<ExprAST*>& args) : func(func), args(args) { }
 	virtual void codegen();
 	virtual bool isIntegral();
 private:
 	ExprAST* func;
-	std::vector<ExprAST*> args;
+	vector<ExprAST*> args;
 };
 
 class PointerDerefAST : public ExprAST {
@@ -292,14 +289,14 @@ private:
 
 class FunctionDeclAST : public AST {
 public:
-	FunctionDeclAST(const std::string& id, Type returnType, const std::vector<std::tuple<std::string, Type>>& argsType) : id(id), returnType(returnType), argsType(argsType) { }
+	FunctionDeclAST(const string& id, Type returnType, const vector<std::tuple<string, Type>>& argsType) : id(id), returnType(returnType), argsType(argsType) { }
 	virtual void codegen();
-	std::string getId() const noexcept { return id; }
+	string getId() const noexcept { return id; }
 	Type getReturnType() const noexcept { return returnType; }
 	int argsCount() const noexcept { return argsType.size(); }
-	std::pair<std::string, Type> getArg() {
+	std::pair<string, Type> getArg() {
 		static int index = 0;
-		std::string first = std::get<0>(argsType[index]);
+		string first = std::get<0>(argsType[index]);
 		Type second = std::get<1>(argsType[index]);
 		index++;
 		return std::make_pair(first, second);
@@ -309,32 +306,32 @@ public:
 		t.kind = TypeKind::FUNC;
 		t.ptrDepth = 1;
 		t.returnType = new Type(returnType);
-		std::vector<Type> argsTypeIn;
-		std::for_each(argsType.begin(), argsType.end(), [&argsTypeIn](const std::tuple<std::string, Type>& type) {
+		vector<Type> argsTypeIn;
+		std::for_each(argsType.begin(), argsType.end(), [&argsTypeIn](const std::tuple<string, Type>& type) {
 			argsTypeIn.push_back(std::get<1>(type));
 		});
 		t.argsType = std::move(argsTypeIn);
 		return t;
 	}
 private:
-	std::string id;
+	string id;
 	Type returnType;
-	std::vector<std::tuple<std::string, Type>> argsType;
+	vector<std::tuple<string, Type>> argsType;
 };
 
 class VarDefAST : public AST {
 public:
-	VarDefAST(Type type, const std::string& id, ExprAST* init) : type(type), id(id), init(init) { }
+	VarDefAST(Type type, const string& id, ExprAST* init) : type(type), id(id), init(init) { }
 	virtual void codegen();
 private:
 	Type type;
-	std::string id;
+	string id;
 	ExprAST* init;
 };
 
 class BlockAST : public AST {
 public:
-	BlockAST(const std::vector<AST*>& blockInternal) : blockInternal(blockInternal) { }
+	BlockAST(const vector<AST*>& blockInternal) : blockInternal(blockInternal) { }
 	virtual void codegen();
 	int getVariableCount() {
 		int count = 0;
@@ -348,7 +345,7 @@ public:
 		return count;
 	}
 private:
-	std::vector<AST*> blockInternal;
+	vector<AST*> blockInternal;
 };
 
 class FunctionDefAST : public AST {
@@ -362,14 +359,14 @@ private:
 
 class ArrayAST : public ExprAST {
 public:
-	ArrayAST(Type type, const std::vector<ExprAST*>& inits) : type(type), inits(inits) { }
+	ArrayAST(Type type, const vector<ExprAST*>& inits) : type(type), inits(inits) { }
 	virtual void codegen();
 	virtual bool isIntegral();
-	const std::vector<ExprAST*>& getInits() const noexcept { return inits; }
+	const vector<ExprAST*>& getInits() const noexcept { return inits; }
 	Type getType() const noexcept { return type; }
 private:
 	Type type;
-	std::vector<ExprAST*> inits;
+	vector<ExprAST*> inits;
 };
 
 class IfAST : public AST {
@@ -415,4 +412,6 @@ private:
 	ExprAST* ret;
 };
 
-std::vector<AST*> parse(std::istringstream& code);
+vector<AST*> parse(istringstream& code);
+
+#endif

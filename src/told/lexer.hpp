@@ -1,7 +1,7 @@
-#pragma once
+#ifndef __LEXOR_HEADER__
+#define __LEXOR_HEADER__
 
-#include <string>
-#include <sstream>
+#include "includes.hpp"
 
 enum class TokenKind {
 	KEYWORD,
@@ -68,17 +68,19 @@ struct Literal {
 	char c;
 	int i;
 	double d;
-	std::string s;
+	string s;
 };
 
 struct Token {
 	TokenKind tokenKind;
-	std::string ident;
+	string ident;
 	TypeKind typeKind;
 	OpKind opKind;
 	KeywordKind keywordKind;
 	Literal literal;	
 };
 
-Token getNext(std::istringstream& stream);
-void unget(std::istringstream& stream);
+Token getNext(istringstream& stream);
+void unget(istringstream& stream);
+
+#endif

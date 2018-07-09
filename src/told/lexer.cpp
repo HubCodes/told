@@ -1,42 +1,7 @@
 #include "lexer.hpp"
+#include "includes.hpp"
 
-#include <cctype>
-#include <cstdlib>
-#include <errno.h>
-#include <iostream>
-#include <unordered_map>
-
-static unordered_map<string, KeywordKind> keywordMap = {
-    { "def", KeywordKind::DEF },
-    { "var", KeywordKind::VAR },
-    { "if", KeywordKind::IF },
-    { "else", KeywordKind::ELSE },
-    { "for", KeywordKind::FOR },
-    { "break", KeywordKind::BREAK },
-    { "continue", KeywordKind::CONTINUE },
-    { "return", KeywordKind::RETURN },
-    { "use", KeywordKind::USE }
-};
-
-static unordered_map<string, TypeKind> typeMap = {
-    { "char", TypeKind::CHAR },
-    { "int", TypeKind::INT },
-    { "double", TypeKind::DOUBLE },
-    { "func", TypeKind::FUNC }
-};
-
-static Token getIdent(istringstream& code);
-static Token getNumber(istringstream& code);
-static Token getDelimeter(istringstream& code);
-static Token getString(istringstream& code);
-static Token getChar(istringstream& code);
-static Token getOperator(int c);
-static char getEscapeSequence(istringstream& code);
-static bool isDelimeter(int c);
-
-int prev = 0;
-
-Token getNext(istringstream& code)
+Token LexicalParser::getNext(istringstream& code)
 {
     while (std::isspace(code.peek()))
         code.get();
@@ -77,12 +42,12 @@ Token getNext(istringstream& code)
     return result;
 };
 
-void unget(istringstream& code)
+void LexicalParser::unget(istringstream& code)
 {
     code.seekg(prev);
 }
 
-static Token getIdent(istringstream& code)
+Token LexicalParser::getIdent(istringstream& code)
 {
     Token result;
     string identStr;
@@ -103,7 +68,7 @@ static Token getIdent(istringstream& code)
     return result;
 }
 
-static Token getNumber(istringstream& code)
+Token LexicalParser::getNumber(istringstream& code)
 {
     Token result;
     string numstr;
@@ -139,7 +104,7 @@ static Token getNumber(istringstream& code)
     return result;
 }
 
-static Token getDelimeter(istringstream& code)
+Token LexicalParser::getDelimeter(istringstream& code)
 {
     Token result;
     int c = code.get();
@@ -192,7 +157,7 @@ static Token getDelimeter(istringstream& code)
     return result;
 }
 
-static Token getString(istringstream& code)
+Token LexicalParser::getString(istringstream& code)
 {
     Token result;
     string str;
@@ -208,7 +173,7 @@ static Token getString(istringstream& code)
     return result;
 }
 
-static Token getChar(istringstream& code)
+Token LexicalParser::getChar(istringstream& code)
 {
     Token result;
     char c;
@@ -228,7 +193,7 @@ static Token getChar(istringstream& code)
     return result;
 }
 
-static Token getOperator(int c)
+Token LexicalParser::getOperator(int c)
 {
     Token result;
     result.tokenKind = TokenKind::OPERATOR;
@@ -279,7 +244,7 @@ static Token getOperator(int c)
     return result;
 }
 
-static char getEscapeSequence(istringstream& code)
+char LexicalParser::getEscapeSequence(istringstream& code)
 {
     static unordered_map<char, char> escMap = {
         { '\'', '\'' },
@@ -306,7 +271,7 @@ static char getEscapeSequence(istringstream& code)
     return c;
 }
 
-static bool isDelimeter(int c)
+bool LexicalParser::isDelimeter(int c)
 {
     switch (c) {
     case '(':

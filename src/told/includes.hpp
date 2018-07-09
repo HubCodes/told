@@ -6,6 +6,8 @@
 #include <vector>
 #include <string>
 #include <memory>
+#include <cctype>
+#include <errno.h>
 #include <utility>
 #include <fstream>
 #include <cstdlib>

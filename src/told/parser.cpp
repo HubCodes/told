@@ -2,144 +2,154 @@
 #include "includes.hpp"
 #include "lexer.hpp"
 
-#define DEBUG_
-#undef DEBUG_
-
-static void logger(const char* msg)
+Parser::Parser()
 {
-#ifdef DEBUG_
-    std::cerr << msg << '\n';
-#endif
 }
 
-static void pos(istringstream& code)
+vector<ASTData> Parser::start_parse(CompilerOption& opt, shared_ptr<CompilerData> cd)
 {
-    std::cerr << code.tellg() << '\n';
+    vector<ASTData> datas;
+    Parser ps;
+
+    for (unordered_map<string, string>::const_iterator iter
+         = cd->getCodes().begin();
+         iter != cd->getCodes().end(); iter++) {
+        istringstream ss(iter->second);
+        string filename = iter->first;
+
+        datas.push_back(ps.parse(filename, ss));
+    }
+
+    return datas;
 }
 
-#ifdef DEBUG_
-#define l(x) logger(x)
-#else
-#define l(x)
-#endif
-
-static unordered_map<string, Type> varTypeMap;
-
-static FunctionDefAST* getFunction(istringstream& code);
-static VarDefAST* getVardef(istringstream& code);
-static BlockAST* getBlock(istringstream& code);
-static ExprAST* getExpr(istringstream& code);
-static ExprAST* getArray(istringstream& code);
-static ExprAST* getAssignExpr(istringstream& code);
-static ExprAST* getLogicOrExpr(istringstream& code);
-static ExprAST* getLogicAndExpr(istringstream& code);
-static ExprAST* getEqualityExpr(istringstream& code);
-static ExprAST* getLessBiggerExpr(istringstream& code);
-static ExprAST* getAddSubExpr(istringstream& code);
-static ExprAST* getMulDivModExpr(istringstream& code);
-static ExprAST* getUnaryExpr(istringstream& code);
-static ExprAST* getCallDeref(istringstream& code);
-static ExprAST* getPrimary(istringstream& code);
-static ExprAST* getIdent(istringstream& code);
-static ExprAST* getLiteral(istringstream& code);
-static Type getType(istringstream& code);
-static IfAST* getIf(istringstream& code);
-static ForAST* getFor(istringstream& code);
-static BreakAST* getBreak(istringstream& code);
-static ContinueAST* getContinue(istringstream& code);
-static ReturnAST* getReturn(istringstream& code);
-
-static void expected(istringstream& code, const char* expected, const char* msg);
-static void wrong(istringstream& code, const char* wron);
-static void maybe(istringstream& code, TokenKind kind);
-static void use(const string& module);
-
-static void expected(istringstream& code, const char* expected, const char* msg)
+ASTData::ASTData(const string& filename)
+    : filename(filename)
 {
-    code.unget();
+}
+
+void ASTData::pushAST(AST* const ast)
+{
+    ast_vec.push_back(ast);
+}
+
+void ASTData::pushUse(const string& use)
+{
+    use_vec.push_back(use);
+}
+
+const vector<AST*>& ASTData::getASTs() const
+{
+    return ast_vec;
+}
+
+const vector<string>& ASTData::getUses() const
+{
+    return use_vec;
+}
+
+const string& ASTData::getFilename() const
+{
+    return filename;
+}
+
+void Parser::expected(istringstream& code, const char* expected, const char* msg)
+{
+    stringstream ss;
+    lex.unget(code);
     std::cout << "Position: " << code.tellg() << '\n';
     std::cout << "Data: " << (char)code.peek() << '\n';
-    std::cerr << "Expected " << expected << ", but " << msg << '\n';
-    std::exit(EXIT_FAILURE);
+    ss << "Expected " << expected << ", but " << msg;
+    error(ss.str());
 }
 
-static void wrong(istringstream& code, const char* wron)
+void Parser::wrong(istringstream& code, const char* wron)
 {
-    code.unget();
+    lex.unget(code);
     std::cout << "Position: " << code.tellg() << '\n';
     std::cout << "Data: " << (char)code.peek() << '\n';
-    std::cerr << "Wrong " << wron << '\n';
-    std::exit(EXIT_FAILURE);
+    error(wron);
 }
 
-static void maybe(istringstream& code, TokenKind kind)
+void Parser::maybe(istringstream& code, TokenKind kind)
 {
-    if (getNext(code).tokenKind != kind) {
-        code.unget();
+    if (lex.getNext(code).tokenKind != kind) {
+        lex.unget(code);
         std::cout << "Position: " << code.tellg() << '\n';
         std::cout << "Data: " << (char)code.peek() << '\n';
-        std::cerr << "Wrong kind of token.\n";
-        std::exit(EXIT_FAILURE);
+        error("Wrong kind of token.");
     }
 }
 
-vector<AST*> parse(istringstream& code)
+TypeCode Parser::fromType(Type ty)
 {
-    l(__FUNCTION__);
-    vector<AST*> result;
-    Token token = getNext(code);
+    if (ty.ptrDepth > 0) {
+        return TypeCode::PTR;
+    } else if (ty.kind == TypeKind::CHAR) {
+        return TypeCode::CHAR;
+    } else if (ty.kind == TypeKind::INT) {
+        return TypeCode::INT;
+    } else if (ty.kind == TypeKind::DOUBLE) {
+        return TypeCode::DOUBLE;
+    } else {
+        return TypeCode::INT;
+    }
+}
+
+Type genFuncType(Type returnType, std::initializer_list<Type> argsType)
+{
+    Type t;
+    t.kind = TypeKind::FUNC;
+    t.ptrDepth = 1;
+    t.returnType = new Type(returnType);
+    t.argsType = argsType;
+    return t;
+}
+
+ASTData Parser::parse(string& filename, istringstream& code)
+{
+    ASTData result(filename);
+    Token token = lex.getNext(code);
     while (token.tokenKind != TokenKind::UNKNOWN) {
         if (token.tokenKind == TokenKind::KEYWORD && token.keywordKind == KeywordKind::DEF) {
-            result.push_back(getFunction(code));
+            result.pushAST(getFunction(code));
         } else if (token.tokenKind == TokenKind::KEYWORD && token.keywordKind == KeywordKind::VAR) {
-            result.push_back(getVardef(code));
+            result.pushAST(getVardef(code));
         } else if (token.tokenKind == TokenKind::KEYWORD && token.keywordKind == KeywordKind::USE) {
-            Token usingg = getNext(code);
-            use(usingg.ident);
+            Token usingg = lex.getNext(code);
+            result.pushUse(usingg.ident);
             maybe(code, TokenKind::SEMICOLON);
         } else {
             expected(code, "toplevel definitions", "unknown");
         }
-        token = getNext(code);
+        token = lex.getNext(code);
     }
     return result;
 }
 
-static void use(const string& module)
+FunctionDefAST* Parser::getFunction(istringstream& code)
 {
-    CodeManager& m = CodeManager::get();
-    Stdlib& s = Stdlib::get();
-    const vector<std::pair<string, Type>>& vec = s.getFuncs(module);
-    std::for_each(vec.begin(), vec.end(), [&m](const std::pair<string, Type>& funcId) {
-        m.insertFunction(funcId.first, funcId.second);
-    });
-}
-
-static bool isDefinableVar = false;
-static FunctionDefAST* getFunction(istringstream& code)
-{
-    l(__FUNCTION__);
-    Token functionId = getNext(code);
+    Token functionId = lex.getNext(code);
     if (functionId.tokenKind != TokenKind::IDENT) {
         wrong(code, "identifier");
     }
     maybe(code, TokenKind::OPEN_PAREN);
-    Token lookahead = getNext(code);
+    Token lookahead = lex.getNext(code);
     vector<std::tuple<string, Type>> args;
     if (lookahead.tokenKind != TokenKind::CLOSE_PAREN) {
         while (true) {
-            // Token id = getNext(code);
+            // Token id = lex.getNext(code);
             maybe(code, TokenKind::COLON);
             Type type = getType(code);
             if (lookahead.tokenKind != TokenKind::IDENT) {
                 expected(code, "identifier", "unknown");
             }
             args.emplace_back(lookahead.ident, type);
-            lookahead = getNext(code);
+            lookahead = lex.getNext(code);
             if (lookahead.tokenKind == TokenKind::CLOSE_PAREN) {
                 break;
             } else if (lookahead.tokenKind == TokenKind::COMMA) {
-                lookahead = getNext(code);
+                lookahead = lex.getNext(code);
             } else {
                 wrong(code, "delimiter in prototype");
             }
@@ -154,17 +164,16 @@ static FunctionDefAST* getFunction(istringstream& code)
     return new FunctionDefAST(proto, block);
 }
 
-static VarDefAST* getVardef(istringstream& code)
+VarDefAST* Parser::getVardef(istringstream& code)
 {
-    l(__FUNCTION__);
-    Token identTok = getNext(code);
+    Token identTok = lex.getNext(code);
     if (identTok.tokenKind != TokenKind::IDENT) {
         expected(code, "identifier", "unknown");
     }
     string id = identTok.ident;
     maybe(code, TokenKind::COLON);
     Type type = getType(code);
-    Token lookahead = getNext(code);
+    Token lookahead = lex.getNext(code);
     varTypeMap[id] = type;
     if (lookahead.tokenKind == TokenKind::SEMICOLON) {
         return new VarDefAST(type, id, nullptr);
@@ -178,13 +187,12 @@ static VarDefAST* getVardef(istringstream& code)
     return nullptr;
 }
 
-static BlockAST* getBlock(istringstream& code)
+BlockAST* Parser::getBlock(istringstream& code)
 {
     vector<AST*> block;
     maybe(code, TokenKind::OPEN_BLOCK);
-    Token lookahead = getNext(code);
+    Token lookahead = lex.getNext(code);
     while (lookahead.tokenKind != TokenKind::CLOSE_BLOCK) {
-        l(__FUNCTION__);
         if (lookahead.tokenKind == TokenKind::KEYWORD) {
             switch (lookahead.keywordKind) {
             case KeywordKind::VAR:
@@ -220,28 +228,26 @@ static BlockAST* getBlock(istringstream& code)
             if (lookahead.tokenKind == TokenKind::CLOSE_BLOCK) {
                 break;
             }
-            unget(code);
+            lex.unget(code);
             block.push_back(getExpr(code));
             maybe(code, TokenKind::SEMICOLON);
         }
-        lookahead = getNext(code);
-        l("\n");
+        lookahead = lex.getNext(code);
     }
     return new BlockAST(block);
 }
 
-static IfAST* getIf(istringstream& code)
+IfAST* Parser::getIf(istringstream& code)
 {
-    l(__FUNCTION__);
     maybe(code, TokenKind::OPEN_PAREN);
     ExprAST* cond = getExpr(code);
     maybe(code, TokenKind::CLOSE_PAREN);
     BlockAST* then = getBlock(code);
-    Token lookahead = getNext(code);
+    Token lookahead = lex.getNext(code);
 
     // else문이 있을 경우
     if (lookahead.tokenKind == TokenKind::KEYWORD && lookahead.keywordKind == KeywordKind::ELSE) {
-        Token isIf = getNext(code);
+        Token isIf = lex.getNext(code);
 
         // 1. else if일 경우
         if (isIf.tokenKind == TokenKind::KEYWORD & isIf.keywordKind == KeywordKind::IF) {
@@ -252,20 +258,19 @@ static IfAST* getIf(istringstream& code)
 
         // 2. else일 경우
         else if (isIf.tokenKind == TokenKind::OPEN_BLOCK) {
-            unget(code);
+            lex.unget(code);
             return new IfAST(cond, then, getBlock(code));
         }
 
         // else문이 없을 경우
     }
 
-    unget(code);
+    lex.unget(code);
     return new IfAST(cond, then, nullptr);
 }
 
-static ForAST* getFor(istringstream& code)
+ForAST* Parser::getFor(istringstream& code)
 {
-    l(__FUNCTION__);
     maybe(code, TokenKind::OPEN_PAREN);
     ExprAST* cond = getExpr(code);
     maybe(code, TokenKind::CLOSE_PAREN);
@@ -273,71 +278,67 @@ static ForAST* getFor(istringstream& code)
     return new ForAST(cond, then);
 }
 
-static BreakAST* getBreak(istringstream& code)
+BreakAST* Parser::getBreak(istringstream& code)
 {
-    l(__FUNCTION__);
-    Token lookahead = getNext(code);
+    Token lookahead = lex.getNext(code);
     if (lookahead.tokenKind == TokenKind::OPEN_PAREN) {
         ExprAST* cond = getExpr(code);
         maybe(code, TokenKind::CLOSE_PAREN);
         maybe(code, TokenKind::SEMICOLON);
         return new BreakAST(cond);
     } else {
-        unget(code);
+        lex.unget(code);
         maybe(code, TokenKind::SEMICOLON);
         return new BreakAST(nullptr);
     }
 }
 
-static ContinueAST* getContinue(istringstream& code)
+ContinueAST* Parser::getContinue(istringstream& code)
 {
-    l(__FUNCTION__);
-    Token lookahead = getNext(code);
+    Token lookahead = lex.getNext(code);
     if (lookahead.tokenKind == TokenKind::OPEN_PAREN) {
         ExprAST* cond = getExpr(code);
         maybe(code, TokenKind::CLOSE_PAREN);
         maybe(code, TokenKind::SEMICOLON);
         return new ContinueAST(cond);
     } else {
-        unget(code);
+        lex.unget(code);
         maybe(code, TokenKind::SEMICOLON);
         return new ContinueAST(nullptr);
     }
 }
 
-static ReturnAST* getReturn(istringstream& code)
+ReturnAST* Parser::getReturn(istringstream& code)
 {
-    l(__FUNCTION__);
     ExprAST* ret = getExpr(code);
     maybe(code, TokenKind::SEMICOLON);
     return new ReturnAST(ret);
 }
 
-static ExprAST* getExpr(istringstream& code)
+ExprAST* Parser::getExpr(istringstream& code)
 {
-    l(__FUNCTION__);
-    Token t = getNext(code);
+    Token t = lex.getNext(code);
     if (t.tokenKind == TokenKind::OPEN_ARR) {
         return getArray(code);
     }
-    unget(code);
+    lex.unget(code);
     return getAssignExpr(code);
 }
 
-static ExprAST* getArray(istringstream& code)
+ExprAST* Parser::getArray(istringstream& code)
 {
     Type t = getType(code);
     maybe(code, TokenKind::CLOSE_ARR);
     maybe(code, TokenKind::OPEN_BLOCK);
-    Token next = getNext(code);
+    Token next = lex.getNext(code);
     if (next.tokenKind == TokenKind::CLOSE_BLOCK) {
         return new ArrayAST(t, vector<ExprAST*>());
     }
-    unget(code);
+    lex.unget(code);
     vector<ExprAST*> inits;
     do {
         inits.push_back(getAssignExpr(code));
-        next = getNext(code);
+        next = lex.getNext(code);
     } while (next.tokenKind == TokenKind::COMMA);
     if (next.tokenKind != TokenKind::CLOSE_BLOCK) {
         expected(code, "close block symbol }", "unexpected token");
@@ -345,131 +346,122 @@ static ExprAST* getArray(istringstream& code)
     return new ArrayAST(t, inits);
 }
 
-static ExprAST* getAssignExpr(istringstream& code)
+ExprAST* Parser::getAssignExpr(istringstream& code)
 {
-    l(__FUNCTION__);
     ExprAST* lhs = getLogicOrExpr(code);
-    Token t = getNext(code);
+    Token t = lex.getNext(code);
     while (t.tokenKind == TokenKind::OPERATOR && t.opKind == OpKind::ASSIGN) {
         lhs = new BinaryExprAST(OpKind::ASSIGN, lhs, getLogicOrExpr(code));
-        t = getNext(code);
+        t = lex.getNext(code);
     }
-    unget(code);
+    lex.unget(code);
     return lhs;
 }
 
-static ExprAST* getLogicOrExpr(istringstream& code)
+ExprAST* Parser::getLogicOrExpr(istringstream& code)
 {
-    l(__FUNCTION__);
     ExprAST* lhs = getLogicAndExpr(code);
-    Token t = getNext(code);
+    Token t = lex.getNext(code);
     while (t.tokenKind == TokenKind::OPERATOR && t.opKind == OpKind::OR) {
         lhs = new BinaryExprAST(OpKind::OR, lhs, getLogicAndExpr(code));
-        t = getNext(code);
+        t = lex.getNext(code);
     }
-    unget(code);
+    lex.unget(code);
     return lhs;
 }
 
-static ExprAST* getLogicAndExpr(istringstream& code)
+ExprAST* Parser::getLogicAndExpr(istringstream& code)
 {
-    l(__FUNCTION__);
     ExprAST* lhs = getEqualityExpr(code);
-    Token t = getNext(code);
+    Token t = lex.getNext(code);
     while (t.tokenKind == TokenKind::OPERATOR && t.opKind == OpKind::AND) {
         lhs = new BinaryExprAST(OpKind::AND, lhs, getEqualityExpr(code));
-        t = getNext(code);
+        t = lex.getNext(code);
     }
-    unget(code);
+    lex.unget(code);
     return lhs;
 }
 
-static ExprAST* getEqualityExpr(istringstream& code)
+ExprAST* Parser::getEqualityExpr(istringstream& code)
 {
-    l(__FUNCTION__);
     ExprAST* lhs = getLessBiggerExpr(code);
-    Token t = getNext(code);
+    Token t = lex.getNext(code);
     if (t.tokenKind == TokenKind::OPERATOR && t.opKind == OpKind::EQ) {
         lhs = new BinaryExprAST(OpKind::EQ, lhs, getLessBiggerExpr(code));
     } else if (t.tokenKind == TokenKind::OPERATOR && t.opKind == OpKind::NEQ) {
         lhs = new BinaryExprAST(OpKind::NEQ, lhs, getLessBiggerExpr(code));
     } else {
-        unget(code);
+        lex.unget(code);
     }
     return lhs;
 }
 
-static ExprAST* getLessBiggerExpr(istringstream& code)
+ExprAST* Parser::getLessBiggerExpr(istringstream& code)
 {
-    l(__FUNCTION__);
     ExprAST* lhs = getAddSubExpr(code);
-    Token t = getNext(code);
+    Token t = lex.getNext(code);
     if (t.tokenKind == TokenKind::OPERATOR && t.opKind == OpKind::LT) {
         lhs = new BinaryExprAST(OpKind::LT, lhs, getAddSubExpr(code));
     } else if (t.tokenKind == TokenKind::OPERATOR && t.opKind == OpKind::GT) {
         lhs = new BinaryExprAST(OpKind::GT, lhs, getAddSubExpr(code));
     } else {
-        unget(code);
+        lex.unget(code);
     }
     return lhs;
 }
 
-static ExprAST* getAddSubExpr(istringstream& code)
+ExprAST* Parser::getAddSubExpr(istringstream& code)
 {
-    l(__FUNCTION__);
     ExprAST* lhs = getMulDivModExpr(code);
-    Token t = getNext(code);
+    Token t = lex.getNext(code);
     while (t.tokenKind == TokenKind::OPERATOR && (t.opKind == OpKind::ADD || t.opKind == OpKind::SUB)) {
         lhs = new BinaryExprAST(t.opKind, lhs, getMulDivModExpr(code));
-        t = getNext(code);
+        t = lex.getNext(code);
     }
-    unget(code);
+    lex.unget(code);
     return lhs;
 }
 
-static ExprAST* getMulDivModExpr(istringstream& code)
+ExprAST* Parser::getMulDivModExpr(istringstream& code)
 {
-    l(__FUNCTION__);
     ExprAST* lhs = getUnaryExpr(code);
-    Token t = getNext(code);
+    Token t = lex.getNext(code);
     while (t.tokenKind == TokenKind::OPERATOR && (t.opKind == OpKind::MUL || t.opKind == OpKind::DIV || t.opKind == OpKind::MOD)) {
         lhs = new BinaryExprAST(t.opKind, lhs, getUnaryExpr(code));
-        t = getNext(code);
+        t = lex.getNext(code);
     }
-    unget(code);
+    lex.unget(code);
     return lhs;
 }
 
-static ExprAST* getUnaryExpr(istringstream& code)
+ExprAST* Parser::getUnaryExpr(istringstream& code)
 {
-    l(__FUNCTION__);
-    Token t = getNext(code);
+    Token t = lex.getNext(code);
     if (t.tokenKind == TokenKind::OPERATOR && (t.opKind == OpKind::NOT || t.opKind == OpKind::MUL || t.opKind == OpKind::AND)) {
         ExprAST* rhs = (t.opKind == OpKind::AND) ? getCallDeref(code) : getUnaryExpr(code);
         return new UnaryExprAST(t.opKind, rhs);
     } else {
-        unget(code);
+        lex.unget(code);
         return getCallDeref(code);
     }
 }
 
-static ExprAST* getCallDeref(istringstream& code)
+ExprAST* Parser::getCallDeref(istringstream& code)
 {
-    l(__FUNCTION__);
     ExprAST* callee = getPrimary(code);
-    Token t = getNext(code);
+    Token t = lex.getNext(code);
 
     // 함수 호출
     if (t.tokenKind == TokenKind::OPEN_PAREN) {
-        Token next = getNext(code);
+        Token next = lex.getNext(code);
         if (next.tokenKind == TokenKind::CLOSE_PAREN) {
             return new CallExprAST(callee, vector<ExprAST*>());
         }
         vector<ExprAST*> args;
-        unget(code);
+        lex.unget(code);
         while (true) {
             args.push_back(getExpr(code));
-            next = getNext(code);
+            next = lex.getNext(code);
             if (next.tokenKind != TokenKind::COMMA) {
                 if (next.tokenKind == TokenKind::CLOSE_PAREN) {
                     return new CallExprAST(callee, args);
@@ -486,41 +478,39 @@ static ExprAST* getCallDeref(istringstream& code)
 
         // 아무 것도 아닐 때
     } else {
-        unget(code);
+        lex.unget(code);
         return callee;
     }
 }
 
-static ExprAST* getPrimary(istringstream& code)
+ExprAST* Parser::getPrimary(istringstream& code)
 {
-    l(__FUNCTION__);
-    Token t = getNext(code);
+    Token t = lex.getNext(code);
     if (t.tokenKind == TokenKind::OPEN_PAREN) {
         ExprAST* recursive = getExpr(code);
         maybe(code, TokenKind::CLOSE_PAREN);
         return recursive;
     } else {
-        unget(code);
+        lex.unget(code);
         switch (t.tokenKind) {
         case TokenKind::IDENT:
             return getIdent(code);
         case TokenKind::LITERAL:
             if (t.literal.literalKind == LiteralKind::STRING) {
-                getNext(code);
+                lex.getNext(code);
                 return new StringAST(t.literal.s);
             }
             return getLiteral(code);
         default:
-            unget(code);
+            lex.unget(code);
         }
     }
     return nullptr;
 }
 
-static ExprAST* getIdent(istringstream& code)
+ExprAST* Parser::getIdent(istringstream& code)
 {
-    l(__FUNCTION__);
-    Token t = getNext(code);
+    Token t = lex.getNext(code);
     if (t.tokenKind == TokenKind::IDENT) {
         return new VariableAST(t.ident);
     }
@@ -529,10 +519,9 @@ static ExprAST* getIdent(istringstream& code)
     return nullptr;
 }
 
-static ExprAST* getLiteral(istringstream& code)
+ExprAST* Parser::getLiteral(istringstream& code)
 {
-    l(__FUNCTION__);
-    Token t = getNext(code);
+    Token t = lex.getNext(code);
     NumericData data;
     if (t.tokenKind == TokenKind::LITERAL) {
         switch (t.literal.literalKind) {
@@ -557,17 +546,16 @@ static ExprAST* getLiteral(istringstream& code)
     return nullptr;
 }
 
-static Type getType(istringstream& code)
+Type Parser::getType(istringstream& code)
 {
-    l(__FUNCTION__);
-    Token t = getNext(code);
+    Token t = lex.getNext(code);
     int ptrDepth = 0;
     if (t.tokenKind == TokenKind::OPERATOR && t.opKind == OpKind::MUL) {
         ptrDepth++;
-        t = getNext(code);
+        t = lex.getNext(code);
         while (t.tokenKind == TokenKind::OPERATOR && t.opKind == OpKind::MUL) {
             ptrDepth++;
-            t = getNext(code);
+            t = lex.getNext(code);
         }
     }
     if (t.tokenKind != TokenKind::TYPE) {
@@ -579,13 +567,13 @@ static Type getType(istringstream& code)
     if (tk == TypeKind::FUNC) {
         result.ptrDepth = 1 + ptrDepth;
         maybe(code, TokenKind::OPEN_PAREN);
-        Token lookahead = getNext(code);
+        Token lookahead = lex.getNext(code);
         while (lookahead.tokenKind != TokenKind::COLON) {
-            unget(code);
+            lex.unget(code);
             result.argsType.push_back(getType(code));
-            lookahead = getNext(code);
+            lookahead = lex.getNext(code);
             if (lookahead.tokenKind == TokenKind::COMMA)
-                lookahead = getNext(code);
+                lookahead = lex.getNext(code);
         }
         result.returnType = new Type(getType(code));
         maybe(code, TokenKind::CLOSE_PAREN);

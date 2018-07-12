@@ -4,7 +4,7 @@
 #include "compileroption.hpp"
 #include "includes.hpp"
 
-class CompilerData {
+class CompilerData final{
 private:
     unordered_map<string, string> codeStrs;
 
@@ -12,6 +12,7 @@ private:
     CompilerData();
 
 public:
+    const unordered_map<string, string> getCodes();
     static shared_ptr<CompilerData> get(CompilerOption& opt);
 };
 

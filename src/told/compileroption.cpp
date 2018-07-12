@@ -16,7 +16,7 @@ CompilerOption::CompilerOption(const bool toFile, const bool isDebug,
 CompilerOption CompilerOption::parse(int argc, char** argv) noexcept
 {
     int i;
-    bool toFile = false;
+    bool toFile = true;
     bool isDebug = false;
     bool compileForLibrary = false;
     string outputFile;
@@ -24,23 +24,27 @@ CompilerOption CompilerOption::parse(int argc, char** argv) noexcept
     vector<string> args(argv, argv + argc);
     vector<string> libs;
 
-    if(argc == 1){
+    if (argc == 1) {
         print_help(args);
     }
 
+    libs.push_back("/usr/lib/told/");
+
     for (i = 1; i < argc; i++) {
         if (args[i] == "-o" || args[i] == "--output") {
-            if (i + 1 < argc) {
+            if (i + 1 >= argc) {
                 error("Please input output file");
             }
             toFile = true;
             outputFile = args[++i];
         } else if (args[i] == "-d" || args[i] == "--debug") {
             isDebug = true;
+        } else if (args[i] == "-p" || args[i] == "--print") {
+            toFile = false;
         } else if (args[i] == "-l" || args[i] == "--library") {
             compileForLibrary = true;
         } else if (args[i] == "-i" || args[i] == "--include") {
-            if (i + 1 < argc) {
+            if (i + 1 >= argc) {
                 error("Please input include library file");
             }
             string buf;

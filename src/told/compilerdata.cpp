@@ -1,9 +1,12 @@
 #include "compilerdata.hpp"
 
+CompilerData::CompilerData()
+{
+}
 
-    CompilerData::CompilerData(){
-
-    }
+const unordered_map<string, string> CompilerData::getCodes() {
+    return codeStrs;
+}
 
 shared_ptr<CompilerData> CompilerData::get(CompilerOption& opt)
 {

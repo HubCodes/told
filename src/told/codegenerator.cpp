@@ -1,29 +1,88 @@
+#include "codegenerator.hpp"
 #include "includes.hpp"
-#include "lexer.hpp"
 #include "parser.hpp"
 
-static string indent;
+CodeGenerator::CodeGenerator(CompilerOption& opt)
+    : opt(opt)
+{
+}
 
-#ifdef DEBUG_
+static CodeManager& manager = CodeManager::create();
 
-#define PRINT(x) std::cout << indent << (x) << '\n';
-#define DEL "------------------------"
-#define PUSH indent += "|   "
-#define POP indent = indent.substr(0, indent.size() - 4)
-#else
-#define PRINT(x)
-#define DEL
-#define PUSH
-#define POP
-#endif
+void CodeGenerator::generateCode(vector<ASTData>& datas)
+{
+
+    for (ASTData data : datas) {
+        manager = CodeManager::create();
+
+        const vector<std::pair<string, Type>>& vec = getPairs(data.getUses());
+        std::for_each(vec.begin(), vec.end(), [](const std::pair<string, Type>& funcId) {
+            manager.insertFunction(funcId.first, funcId.second);
+        });
+        delete &vec;
+
+        for (auto&& ast : data.getASTs()) {
+            ast->codegen();
+        }
+
+        string out_obj;
+
+        if (opt.isOutputToFile()) {
+            std::string::size_type idx(data.getFilename().rfind('.'));
+
+            if (idx != std::string::npos) {
+                out_obj = data.getFilename().substr(0, idx);
+                out_obj += ".s";
+            } else {
+                out_obj = data.getFilename();
+                out_obj += ".s";
+            }
+
+            std::ofstream fos(out_obj);
+
+            if (!fos.is_open()) {
+                string e("Cannot open file : ");
+                e += out_obj;
+                error(e);
+            }
+            writeCode(fos, manager);
+        } else {
+            std::cout << "\n----------[ " << data.getFilename() << "]----------\n";
+            writeCode(std::cout, manager);
+            std::cout << "\n";
+            continue;
+        }
+
+        assemble(out_obj);
+    }
+}
+
+void CodeGenerator::assemble(const string& filename)
+{
+    string comand("ld -s");
+}
+
+const vector<std::pair<string, Type>>& CodeGenerator::getPairs(vector<string> uses)
+{
+    vector<std::pair<string, Type>> *pairs = new vector<std::pair<string, Type>>();
+
+    
+
+    return *pairs;
+}
+void CodeGenerator::writeCode(std::ostream& stream, CodeManager& manager)
+{
+    stream << ".section .data\n";
+    for (auto&& str : manager.getDataSeg()) {
+        stream << str << '\n';
+    }
+    stream << ".section .text\n";
+    for (auto&& str : manager.getTextSeg()) {
+        stream << str << '\n';
+    }
+}
 
 #define D(x) static_cast<int>(x)
-
-#ifdef DEBUG_R
-#define l(x) manager.push(CodeManager::TEXT, string("#   ") + x)
-#else
-#define l(x)
-#endif
 
 const char* getMovInstr(Type type)
 {
@@ -60,16 +119,6 @@ void printType(Type t)
  */
 void NumberAST::codegen()
 {
-#ifdef DEBUG_
-    PRINT("NumericAST");
-    PRINT((kind == LiteralKind::CHAR)
-            ? "char data :" + std::to_string(numericData.c)
-            : (kind == LiteralKind::INT)
-                ? "int data: " + std::to_string(numericData.i)
-                : "double data: " + std::to_string(numericData.d));
-    PRINT(DEL);
-#else
-    l("NumberAST::codegen");
     if (kind == LiteralKind::DOUBLE) {
         uint64_t casted = *((uint64_t*)&(numericData.d));
         manager.getNextLabel();
@@ -82,12 +131,10 @@ void NumberAST::codegen()
         manager.push(CodeManager::TEXT, "mov $" + std::to_string(data) + ", %rax",
             true);
     }
-#endif
 }
 
 void loadVar(VariableAST* var)
 {
-    l("loadVar");
     const string& id = var->getId();
     const string& funcId = manager.getNowFunction();
     if (funcId.empty()) {
@@ -138,18 +185,11 @@ void loadVar(VariableAST* var)
  */
 void VariableAST::codegen()
 {
-#ifdef DEBUG_
-    PRINT("VariableAST");
-    PRINT(id);
-    PRINT(DEL);
-#else
-    l("VariableAST::codegen");
     if (manager.isFunction(id)) {
         manager.push(CodeManager::TEXT, "movabsq $" + id + ", %rax", true);
         return;
     }
     loadVar(this);
-#endif
 }
 
 /*
@@ -160,24 +200,16 @@ void VariableAST::codegen()
  */
 void StringAST::codegen()
 {
-#ifdef DEBUG_
-    PRINT("StringAST");
-    PRINT(str);
-    PRINT(DEL);
-#else
-    l("StringAST::codegen");
     manager.getNextLabel();
     manager.push(CodeManager::DATA, manager.getLabel() + ":");
     manager.push(CodeManager::DATA, ".asciz \"" + str + "\"", true);
     manager.push(CodeManager::TEXT, "movabs $" + manager.getLabel() + ", %rax",
         true);
-#endif
 }
 
 // 전제 : 좌측 피연산자는 rbx(xmm1), 우측 피연산자는 rax(xmm0)
 void pushBinopExpr(OpKind op, bool isDouble)
 {
-    l("pushBinopExpr");
     manager.push(CodeManager::TEXT, "pop %rbx", true);
     switch (op) {
     case OpKind::ADD:
@@ -253,7 +285,6 @@ void pushBinopExpr(OpKind op, bool isDouble)
 // 전제 : rbx 혹은 xmm1에 값이 들어있다.
 void pushAssignExpr(ExprAST* lhs, bool leftInt, bool rightInt)
 {
-    l("pushAssignExpr");
     VariableAST* test1 = dynamic_cast<VariableAST*>(lhs);
     PointerDerefAST* test2 = dynamic_cast<PointerDerefAST*>(lhs);
     string nowFunc = manager.getNowFunction();
@@ -306,7 +337,7 @@ void pushAssignExpr(ExprAST* lhs, bool leftInt, bool rightInt)
         // 현재 시점 : rbx = 대입될 값, rax = 포인터 값(확정)
         Type to = test2->getTypeObject();
         to.ptrDepth--;
-        TypeCode t = fromType(to);
+        TypeCode t = Parser::fromType(to);
         string instr = (t == TypeCode::CHAR) ? "movb" : (t == TypeCode::INT) ? "movl" : "movq";
         string reg = (t == TypeCode::CHAR) ? "bl" : (t == TypeCode::INT) ? "ebx" : "rbx";
         if (leftInt) {
@@ -327,16 +358,6 @@ void pushAssignExpr(ExprAST* lhs, bool leftInt, bool rightInt)
 
 void BinaryExprAST::codegen()
 {
-#ifdef DEBUG_
-    PRINT("BinaryExprAST");
-    PRINT(opMap[static_cast<int>(kind)]);
-    PUSH;
-    lhs->codegen();
-    rhs->codegen();
-    POP;
-    PRINT(DEL);
-#else
-    l("BinaryExprAST::codegen");
     bool leftInt = lhs->isIntegral();
     bool rightInt = rhs->isIntegral();
     if (kind == OpKind::ASSIGN) {
@@ -377,20 +398,10 @@ void BinaryExprAST::codegen()
         rhs->codegen();
     }
     pushBinopExpr(kind, !leftInt && !rightInt);
-#endif
 }
 
 void UnaryExprAST::codegen()
 {
-#ifdef DEBUG_
-    PRINT("UnaryExprAST");
-    PRINT(opMap[static_cast<int>(kind)]);
-    PUSH;
-    operand->codegen();
-    POP;
-    PRINT(DEL);
-#else
-    l("UnaryExprAST::codegen");
     if (kind == OpKind::NOT) {
         operand->codegen();
         manager.push(CodeManager::TEXT, "cmp $0, %rax", true);
@@ -413,22 +424,10 @@ void UnaryExprAST::codegen()
             }
         }
     }
-#endif
 }
 
 void CallExprAST::codegen()
 {
-#ifdef DEBUG_
-    PRINT("CallExprAST");
-    PUSH;
-    func->codegen();
-    for (auto&& a : args) {
-        a->codegen();
-    }
-    POP;
-    PRINT(DEL);
-#else
-    l("CallExprAST::codegen");
     func->codegen();
     manager.push(CodeManager::TEXT, "mov %rax, %r10", true);
     for (int i = args.size() - 1; i >= 0; --i) {
@@ -438,24 +437,14 @@ void CallExprAST::codegen()
     manager.push(CodeManager::TEXT, "call *%r10", true);
     manager.push(CodeManager::TEXT,
         "add $" + std::to_string(8 * args.size()) + ", %rsp", true);
-#endif
 }
 
 void PointerDerefAST::codegen()
 {
-#ifdef DEBUG_
-    PRINT("PointerDerefAST");
-    PUSH;
-    ptr->codegen();
-    index->codegen();
-    POP;
-    PRINT(DEL);
-#else
-    l("PointerDerefAST::codegen");
     TypeCode t;
     Type to = getTypeObject();
     to.ptrDepth--;
-    t = fromType(to);
+    t = Parser::fromType(to);
     ptr->codegen();
     manager.push(CodeManager::TEXT, "push %rax", true);
     // manager.push(CodeManager::TEXT, "mov %rax, %rbx", true);
@@ -471,49 +460,21 @@ void PointerDerefAST::codegen()
     } else {
         manager.push(CodeManager::TEXT, "movq (%rbx), %rax", true);
     }
-#endif
 }
 
 void FunctionDeclAST::codegen()
 {
-#ifdef DEBUG_
-    PRINT("FunctionDeclAST");
-    PRINT("function name: " + id);
-    PRINT(DEL);
-#else
-
-#endif
 }
 
 void BlockAST::codegen()
 {
-#ifdef DEBUG_
-    PRINT("BlockAST");
-    PUSH;
     for (auto&& a : blockInternal) {
         a->codegen();
     }
-    POP;
-    PRINT(DEL);
-#else
-    l("BlockAST::codegen");
-    for (auto&& a : blockInternal) {
-        a->codegen();
-    }
-#endif
 }
 
 void FunctionDefAST::codegen()
 {
-#ifdef DEBUG_
-    PRINT("FunctionDefAST");
-    PUSH;
-    prototype->codegen();
-    block->codegen();
-    POP;
-    PRINT(DEL);
-#else
-    l("FunctionDefAST::codegen");
     auto&& id = prototype->getId();
     manager.insertFunction(id, prototype->getType());
     manager.setNowFunction(id);
@@ -554,12 +515,10 @@ void FunctionDefAST::codegen()
     // 9. jmp rip
     manager.push(CodeManager::TEXT, "ret", true);
     manager.setNowFunction();
-#endif
 }
 
 void pushGlobalVar(ExprAST* top)
 {
-    l("pushGlobalVar");
     enum TypeCode { NUMBER,
         STRING,
         ARRAY,
@@ -611,16 +570,6 @@ void pushGlobalVar(ExprAST* top)
 
 void VarDefAST::codegen()
 {
-#ifdef DEBUG_
-    PRINT("VarDefAST");
-    PRINT("Variable name: " + id);
-    PUSH;
-    if (init)
-        init->codegen();
-    POP;
-    PRINT(DEL);
-#else
-    l("VarDefAST::codegen");
     auto&& nowFunc = manager.getNowFunction();
 
     // 지역 변수일 때
@@ -651,12 +600,10 @@ void VarDefAST::codegen()
         pushGlobalVar(init);
         manager.insertGlobalVar(id, type);
     }
-#endif
 }
 
 void pushArrayString(const vector<ExprAST*>& inits)
 {
-    l("pushArrayString");
     vector<string> labels;
     for (auto&& a : inits) {
         StringAST* str = dynamic_cast<StringAST*>(a);
@@ -675,17 +622,7 @@ void pushArrayString(const vector<ExprAST*>& inits)
 
 void ArrayAST::codegen()
 {
-#ifdef DEBUG_
-    PRINT("ArrayAST");
-    PUSH;
-    for (auto&& a : inits) {
-        a->codegen();
-    }
-    POP;
-    PRINT(DEL);
-#else
-    l("ArrayAST::codegen");
-    TypeCode t = fromType(getType());
+    TypeCode t = Parser::fromType(getType());
     string datastr;
     if (t == TypeCode::CHAR) {
         datastr = ".byte";
@@ -716,27 +653,10 @@ void ArrayAST::codegen()
             break;
         }
     }
-#endif
 }
 
 void IfAST::codegen()
 {
-#ifdef DEBUG_
-    PRINT("IfAST");
-    PUSH;
-    if (cond) {
-        cond->codegen();
-    }
-    if (then) {
-        then->codegen();
-    }
-    if (els) {
-        els->codegen();
-    }
-    POP;
-    PRINT(DEL);
-#else
-    l("IfAST::codegen");
     if (cond) {
         manager.getNextLabel();
         string elseLabel = manager.getLabel();
@@ -751,24 +671,12 @@ void IfAST::codegen()
     } else {
         then->codegen();
     }
-#endif
 }
 
 static std::stack<std::pair<string, string>> forFlow;
 
 void ForAST::codegen()
 {
-#ifdef DEBUG_
-    PRINT("ForAST");
-    PUSH;
-    if (cond) {
-        cond->codegen();
-    }
-    then->codegen();
-    POP;
-    PRINT(DEL);
-#else
-    l("ForAST::codegen");
     manager.getNextLabel();
     string begin = manager.getLabel();
     manager.getNextLabel();
@@ -782,21 +690,10 @@ void ForAST::codegen()
     manager.push(CodeManager::TEXT, "jmp " + begin, true);
     manager.push(CodeManager::TEXT, end + ":");
     forFlow.pop();
-#endif
 }
 
 void BreakAST::codegen()
 {
-#ifdef DEBUG_
-    PRINT("BreakAST");
-    PUSH;
-    if (cond) {
-        cond->codegen();
-    }
-    POP;
-    PRINT(DEL);
-#else
-    l("BreakAST::codegen");
     if (!forFlow.empty()) {
         auto&& pair = forFlow.top();
         if (cond) {
@@ -809,21 +706,10 @@ void BreakAST::codegen()
     } else {
         error("Cannot insert break statement out of for statement.\n");
     }
-#endif
 }
 
 void ContinueAST::codegen()
 {
-#ifdef DEBUG_
-    PRINT("ContinueAST");
-    PUSH;
-    if (cond) {
-        cond->codegen();
-    }
-    POP;
-    PRINT(DEL);
-#else
-    l("ContinueAST::codegen");
     if (!forFlow.empty()) {
         auto&& pair = forFlow.top();
         if (cond) {
@@ -836,23 +722,13 @@ void ContinueAST::codegen()
     } else {
         error("Cannot insert continue statement out of for statement.\n");
     }
-#endif
 }
 
 void ReturnAST::codegen()
 {
-#ifdef DEBUG_
-    PRINT("ReturnAST");
-    PUSH;
-    ret->codegen();
-    POP;
-    PRINT(DEL);
-#else
-    l("BreakAST::codegen");
     ret->codegen();
     manager.push(CodeManager::TEXT, "leave", true);
     manager.push(CodeManager::TEXT, "ret", true);
-#endif
 }
 
 bool NumberAST::isIntegral()
@@ -908,6 +784,23 @@ bool CallExprAST::isIntegral()
 bool PointerDerefAST::isIntegral()
 {
     return ptr->isIntegral();
+}
+
+TypeCode PointerDerefAST::getType() noexcept
+{
+    check();
+    VariableAST* p = dynamic_cast<VariableAST*>(ptr);
+    bool isLocal = !manager.getNowFunction().empty();
+    return isLocal ? manager.getTypeCode(p->getId(), true, manager.getNowFunction()) : manager.getTypeCode(p->getId());
+}
+
+Type PointerDerefAST::getTypeObject() const noexcept
+{
+    check();
+    VariableAST* p = dynamic_cast<VariableAST*>(ptr);
+    bool isLocal = !manager.getNowFunction().empty();
+    Type t = isLocal ? manager.getTypeObject(p->getId(), true, manager.getNowFunction()) : manager.getTypeObject(p->getId());
+    return t;
 }
 
 bool ArrayAST::isIntegral()
@@ -1048,7 +941,7 @@ TypeCode CodeManager::getTypeCode(const string& varId,
     bool isLocal,
     const string& funcId)
 {
-    return fromType(getTypeObject(varId, isLocal, funcId));
+    return Parser::fromType(getTypeObject(varId, isLocal, funcId));
 }
 
 bool CodeManager::isVarIntegral(const string& varId,

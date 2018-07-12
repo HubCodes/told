@@ -15,7 +15,7 @@ $(OUTPUT): $(ASSEM)
 	clang $^ $(LIBS) -o $@
 
 $(ASSEM): $(CODE)
-	$(CC) $^ > $@
+	$(CC) $^ -o $@
 
 clean:
 	rm $(OUTPUT) $(ASSEM)

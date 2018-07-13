@@ -1,5 +1,14 @@
+<<<<<<< Updated upstream
 CC=g++
+=======
+<<<<<<< Updated upstream
+CC=clang++
+>>>>>>> Stashed changes
 STD_FLAG=-std=c++14
+=======
+CC=g++
+STD_FLAG=-std=c++17
+>>>>>>> Stashed changes
 
 OUTPUT_PATH=./bin
 SRCS=./src/told/*.cpp

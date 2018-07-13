@@ -1,0 +1,8 @@
+def closed(fd: int): int;
+def getstr(buffer: *char, count: int): int;
+def opend(filepath: *char, option: int, mode: int): int;
+def putc(ch: int): int;
+def puti(number: int): int;
+def putstr(buffer: *char, count: int): int;
+def readd(fd: int, buffer: *char, count: int): int;
+def writed(fd: int, buffer: *char, count: int): int;

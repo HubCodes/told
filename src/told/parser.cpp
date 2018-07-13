@@ -10,13 +10,10 @@ vector<ASTData> Parser::start_parse(CompilerOption& opt, shared_ptr<CompilerData
 {
     vector<ASTData> datas;
     Parser ps;
-
-    for (unordered_map<string, string>::const_iterator iter
-         = cd->getCodes().begin();
+    for (auto iter = cd->getCodes().begin();
          iter != cd->getCodes().end(); iter++) {
         istringstream ss(iter->second);
         string filename = iter->first;
-
         datas.push_back(ps.parse(filename, ss));
     }
 
@@ -96,7 +93,7 @@ TypeCode Parser::fromType(Type ty)
     }
 }
 
-Type genFuncType(Type returnType, std::initializer_list<Type> argsType)
+Type Parser::genFuncType(Type returnType, vector<Type> argsType)
 {
     Type t;
     t.kind = TypeKind::FUNC;
@@ -159,7 +156,12 @@ FunctionDefAST* Parser::getFunction(istringstream& code)
     Type returnType = getType(code);
     auto&& proto = new FunctionDeclAST(functionId.ident, returnType, args);
     isDefinableVar = true;
-    auto&& block = getBlock(code);
+    BlockAST* block;
+    if (lex.getNext(code).tokenKind != TokenKind::SEMICOLON) {
+        block = nullptr;
+    } else {
+        block = getBlock(code);
+    }
     isDefinableVar = false;
     return new FunctionDefAST(proto, block);
 }

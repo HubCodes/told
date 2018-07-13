@@ -1,0 +1,2 @@
+def balloc(factor: int): *char;
+def bfree(ptr: *char, factor: int): int;

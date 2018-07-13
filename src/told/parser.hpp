@@ -185,6 +185,17 @@ public:
         index++;
         return std::make_pair(first, second);
     }
+
+    std::vector<Type> getArgs()
+    {
+        vector<Type> list;
+
+        for (std::tuple<string, Type> arg : argsType) {
+            list.push_back(std::get<1>(arg));
+        }
+
+        return list;
+    }
     Type getType() const
     {
         Type t;
@@ -253,6 +264,10 @@ public:
     {
     }
     virtual void codegen();
+    FunctionDeclAST* getPrototype()
+    {
+        return prototype;
+    }
 
 private:
     FunctionDeclAST* prototype;
@@ -348,6 +363,7 @@ private:
     vector<string> use_vec;
 
     string filename;
+
 public:
     ASTData(const string& filename);
 
@@ -413,20 +429,15 @@ private:
     void expected(istringstream& code, const char* expected, const char* msg);
     void wrong(istringstream& code, const char* wron);
     void maybe(istringstream& code, TokenKind kind);
-    // void use(const string& module);
-
-    Parser();
-
-    ASTData parse(string& filename, istringstream& code);
-
-    // friend void CodeGenerator::generateCode(Parser& opt);
-    // vector<AST*> getAST();
 
 public:
+    Parser();
+    ASTData parse(string& filename, istringstream& code);
+
     static vector<ASTData> start_parse(CompilerOption& opt, shared_ptr<CompilerData> cd);
 
     static TypeCode fromType(Type ty);
-    static Type genFuncType(Type returnType, std::initializer_list<Type> argsType);
+    static Type genFuncType(Type returnType, vector<Type> argsType);
 };
 
 #endif

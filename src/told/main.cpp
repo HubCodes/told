@@ -11,10 +11,10 @@ int main(int argc, char** argv)
     shared_ptr<CompilerData> datas = CompilerData::get(options);
 
     vector<ASTData> ps = Parser::start_parse(options, datas);
-    
+
     CodeGenerator generator(options);
     generator.generateCode(ps);
-    
+
     return 0;
 }
 

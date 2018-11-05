@@ -226,6 +226,7 @@ void pushBinopExpr(OpKind op, bool isDouble) {
 			break;
 		}
 		case OpKind::OR: {
+			/*
 			manager.getNextLabel();
 			std::string truee = manager.getLabel();
 			manager.getNextLabel();
@@ -239,6 +240,22 @@ void pushBinopExpr(OpKind op, bool isDouble) {
 			manager.push(CodeManager::TEXT, truee + ":");
 			manager.push(CodeManager::TEXT, "mov $1, %rbx", true);
 			manager.push(CodeManager::TEXT, end + ":");	
+			break;
+			*/
+			manager.getNextLabel();
+			std::string label1 = manager.getLabel();
+			manager.getNextLabel();
+			std::string end = manager.getLabel();
+			manager.push(CodeManager::TEXT, "cmp $0, %rbx", true);
+			manager.push(CodeManager::TEXT, "jne " + label1, true);
+			manager.push(CodeManager::TEXT, "cmp $0, %rax", true);	
+			manager.push(CodeManager::TEXT, "jne " + label1, true);
+			manager.push(CodeManager::TEXT, "mov $0, %rbx", true);
+			manager.push(CodeManager::TEXT, "jmp " + end, true);
+			manager.push(CodeManager::TEXT, label1 + ":");
+			manager.push(CodeManager::TEXT, "mov $1, %rbx", true);
+			manager.push(CodeManager::TEXT, end + ":");
+			break;
 		}
 	}
 	manager.push(CodeManager::TEXT, "mov %rbx, %rax", true);
@@ -426,13 +443,15 @@ void CallExprAST::codegen() {
 #else
 	l("CallExprAST::codegen");	
 	func->codegen();
-	manager.push(CodeManager::TEXT, "mov %rax, %r10", true);
+	// manager.push(CodeManager::TEXT, "mov %rax, %r10", true);
+	manager.push(CodeManager::TEXT, "push %rax", true);
 	for (int i = args.size() - 1; i >= 0; --i) {
 		args[i]->codegen();
 		manager.push(CodeManager::TEXT, "push %rax", true);
 	}
+	manager.push(CodeManager::TEXT, "mov " + std::to_string(args.size() * 8) + "(%rsp), %r10", true);
 	manager.push(CodeManager::TEXT, "call *%r10", true);
-	manager.push(CodeManager::TEXT, "add $" + std::to_string(8 * args.size()) + ", %rsp", true);
+	manager.push(CodeManager::TEXT, "add $" + std::to_string(8 * args.size() + 8) + ", %rsp", true);
 #endif
 }
 

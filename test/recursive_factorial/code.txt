@@ -10,7 +10,7 @@ def factorial(n: int): int {
 }
 
 def main(): int {
-	var x: int = factorial(6) + 1;
+	var x: int = factorial(6);
 	puti(x);
 	putc('\n');
 	return 0;

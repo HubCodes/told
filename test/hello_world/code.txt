@@ -2,8 +2,6 @@ use fio;
 use string;
 
 def main(): int {
-	var hello: *char = "Hello, world!\n";
-	var length: int = strsize(hello);
-	putstr(hello, length);
+	putstrln("Hello, world!");
 	return 0;
 }

@@ -1,6 +1,8 @@
 
 
 .section .data
+.temp4:
+	.asciz "good result."
 .section .text
 #   FunctionDefAST::codegen
 .global fibonacci
@@ -143,6 +145,16 @@ main:
 	push %rax
 #   NumberAST::codegen
 	mov $10, %rax
+	push %rax
+	mov 8(%rsp), %r10
+	call *%r10
+	add $16, %rsp
+#   CallExprAST::codegen
+#   VariableAST::codegen
+	movabsq $putstrln, %rax
+	push %rax
+#   StringAST::codegen
+	movabs $.temp4, %rax
 	push %rax
 	mov 8(%rsp), %r10
 	call *%r10

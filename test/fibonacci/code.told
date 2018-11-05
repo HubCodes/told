@@ -11,6 +11,6 @@ def fibonacci(n: int): int {
 def main(): int {
 	puti(fibonacci(10));
 	putc('\n');
+	putstrln("good result.");
 	return 0;
 }
-

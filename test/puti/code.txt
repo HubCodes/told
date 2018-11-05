@@ -1,0 +1,9 @@
+use fio;
+
+def main(): int {
+	puti(100);
+	putc('\n');
+	puti(1);
+	putc('\n');
+}
+

@@ -169,6 +169,7 @@ private:
 		libs["fio"].push_back({ "getstr", genFuncType	({ TypeKind::INT, .ptrDepth=0 }, { { TypeKind::CHAR, .ptrDepth=1 }, { TypeKind::INT, .ptrDepth=0 } }) });
 		libs["fio"].push_back({ "putstr", genFuncType	({ TypeKind::INT, .ptrDepth=0 }, { { TypeKind::CHAR, .ptrDepth=1 }, { TypeKind::INT, .ptrDepth=0 } }) });
 		libs["fio"].push_back({ "putc", genFuncType		({ TypeKind::INT, .ptrDepth=0 }, { { TypeKind::INT, .ptrDepth=0 } }) });
+		libs["fio"].push_back({ "puti", genFuncType		({ TypeKind::INT, .ptrDepth=0 }, { { TypeKind::INT, .ptrDepth=0 } }) }); 
 
 		libs["memory"].push_back({ "balloc", genFuncType({ TypeKind::CHAR, .ptrDepth=1 }, { { TypeKind::INT, .ptrDepth=0 } }) });
 		libs["memory"].push_back({ "bfree", genFuncType({ TypeKind::INT, .ptrDepth=0 }, { { TypeKind::CHAR, .ptrDepth=1 }, { TypeKind::INT, .ptrDepth=0 } }) });

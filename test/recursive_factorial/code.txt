@@ -1,0 +1,18 @@
+use fio;
+use string;
+
+def factorial(n: int): int {
+	if (n ~ 1) {
+		return 1;
+	} else {
+		return n * factorial(n-1);
+	}
+}
+
+def main(): int {
+	var x: int = factorial(6) + 1;
+	puti(x);
+	putc('\n');
+	return 0;
+}
+

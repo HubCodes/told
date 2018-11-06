@@ -902,6 +902,16 @@ main:
 	mov 24(%rsp), %r10
 	call *%r10
 	add $32, %rsp
+#   CallExprAST::codegen
+#   VariableAST::codegen
+	movabsq $putc, %rax
+	push %rax
+#   NumberAST::codegen
+	mov $123, %rax
+	push %rax
+	mov 8(%rsp), %r10
+	call *%r10
+	add $16, %rsp
 #   ForAST::codegen
 .temp22:
 #   BinaryExprAST::codegen
@@ -977,13 +987,33 @@ main:
 	movabsq $putc, %rax
 	push %rax
 #   NumberAST::codegen
-	mov $10, %rax
+	mov $44, %rax
 	push %rax
 	mov 8(%rsp), %r10
 	call *%r10
 	add $16, %rsp
 	jmp .temp22
 .temp23:
+#   CallExprAST::codegen
+#   VariableAST::codegen
+	movabsq $putc, %rax
+	push %rax
+#   NumberAST::codegen
+	mov $125, %rax
+	push %rax
+	mov 8(%rsp), %r10
+	call *%r10
+	add $16, %rsp
+#   CallExprAST::codegen
+#   VariableAST::codegen
+	movabsq $putc, %rax
+	push %rax
+#   NumberAST::codegen
+	mov $10, %rax
+	push %rax
+	mov 8(%rsp), %r10
+	call *%r10
+	add $16, %rsp
 #   BreakAST::codegen
 #   NumberAST::codegen
 	mov $0, %rax

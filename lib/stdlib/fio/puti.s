@@ -42,8 +42,42 @@ puti:
 #   NumberAST::codegen
 	mov $0, %rax
 	movl %eax, -64(%rbp)
-#   ForAST::codegen
+#   IfAST::codegen
+#   BinaryExprAST::codegen
+#   VariableAST::codegen
+#   loadVar
+	movl -8(%rbp), %eax
+	cltq
+	push %rax
+#   NumberAST::codegen
+	mov $0, %rax
+#   pushBinopExpr
+	pop %rbx
+	cmp %rax, %rbx
+	sete %bl
+	movzbq %bl, %rbx
+	mov %rbx, %rax
+	cmp $0, %rax
+	je .temp2
+#   BlockAST::codegen
+#   CallExprAST::codegen
+#   VariableAST::codegen
+	movabsq $putc, %rax
+	push %rax
+#   NumberAST::codegen
+	mov $48, %rax
+	push %rax
+	mov 8(%rsp), %r10
+	call *%r10
+	add $16, %rsp
+#   BreakAST::codegen
+#   NumberAST::codegen
+	mov $1, %rax
+	leave
+	ret
 .temp2:
+#   ForAST::codegen
+.temp3:
 #   BinaryExprAST::codegen
 #   VariableAST::codegen
 #   loadVar
@@ -59,7 +93,7 @@ puti:
 	movzbq %bl, %rbx
 	mov %rbx, %rax
 	cmp $0, %rax
-	je .temp3
+	je .temp4
 #   BlockAST::codegen
 #   BinaryExprAST::codegen
 #   BinaryExprAST::codegen
@@ -104,8 +138,8 @@ puti:
 	sub $48, %rdx
 	pop %rbx
 	movl %ebx, (%rdx)
-	jmp .temp2
-.temp3:
+	jmp .temp3
+.temp4:
 #   BinaryExprAST::codegen
 #   VariableAST::codegen
 #   loadVar
@@ -118,7 +152,7 @@ puti:
 	pop %rbx
 	movl %ebx, (%rdx)
 #   ForAST::codegen
-.temp4:
+.temp5:
 #   BinaryExprAST::codegen
 #   VariableAST::codegen
 #   loadVar
@@ -134,7 +168,7 @@ puti:
 	movzbq %bl, %rbx
 	mov %rbx, %rax
 	cmp $0, %rax
-	je .temp5
+	je .temp6
 #   BlockAST::codegen
 #   BinaryExprAST::codegen
 #   BinaryExprAST::codegen
@@ -241,8 +275,8 @@ puti:
 	sub $40, %rdx
 	pop %rbx
 	movl %ebx, (%rdx)
-	jmp .temp4
-.temp5:
+	jmp .temp5
+.temp6:
 #   BinaryExprAST::codegen
 #   VariableAST::codegen
 #   loadVar
@@ -266,7 +300,7 @@ puti:
 #   CallExprAST::codegen
 #   VariableAST::codegen
 	movabsq $putstr, %rax
-	mov %rax, %r10
+	push %rax
 #   VariableAST::codegen
 #   loadVar
 	movl -32(%rbp), %eax
@@ -278,10 +312,11 @@ puti:
 	sub $24, %rax
 	mov (%rax), %rax
 	push %rax
+	mov 16(%rsp), %r10
 	call *%r10
-	add $16, %rsp
+	add $24, %rsp
 #   ForAST::codegen
-.temp6:
+.temp7:
 #   BinaryExprAST::codegen
 #   VariableAST::codegen
 #   loadVar
@@ -299,7 +334,7 @@ puti:
 	movzbq %bl, %rbx
 	mov %rbx, %rax
 	cmp $0, %rax
-	je .temp7
+	je .temp8
 #   BlockAST::codegen
 #   BinaryExprAST::codegen
 #   NumberAST::codegen
@@ -340,8 +375,8 @@ puti:
 	sub $56, %rdx
 	pop %rbx
 	movl %ebx, (%rdx)
-	jmp .temp6
-.temp7:
+	jmp .temp7
+.temp8:
 #   BreakAST::codegen
 #   VariableAST::codegen
 #   loadVar

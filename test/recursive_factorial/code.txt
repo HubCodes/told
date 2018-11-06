@@ -15,4 +15,3 @@ def main(): int {
 	putc('\n');
 	return 0;
 }
-

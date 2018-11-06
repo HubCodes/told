@@ -8,6 +8,10 @@ def puti(data: int): int {
 	var copied: int = data;
 	var index: int = 0;
 	var length: int = 0;
+	if (data ~ 0) {
+		putc('0');
+		return 1;
+	}
 	for (copied ^ 0) {
 		digits = digits + 1;
 		copied = copied / 10;

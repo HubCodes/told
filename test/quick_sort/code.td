@@ -47,10 +47,13 @@ def main(): int {
 	var len: int = 8;
 	var index: int = 0;
 	quick_sort(a, 0, len); 
+	putc('{');
 	for (index < len * 4) {
 		puti(a[index]);
 		index = index + 4;
-		putc('\n');
+		putc(',');
 	}
+	putc('}');
+	putc('\n');
 	return 0;
 }
